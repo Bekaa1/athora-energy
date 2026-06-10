@@ -1,0 +1,1102 @@
+@font-face {
+  font-family: "PP Monument Extended";
+  src:
+    local("PP Monument Extended"),
+    local("PP Monument Extended Regular"),
+    local("Monument Extended"),
+    local("Monument Extended Regular"),
+    url("/fonts/PPMonumentExtended-Variable.woff2") format("woff2-variations"),
+    url("/fonts/PPMonumentExtended-Regular.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --blue: #061dff;
+  --deep-blue: #0714f4;
+  --cyan: #00e5ee;
+  --orange: #ff4114;
+  --yellow: #ffe600;
+  --green: #00e327;
+  --ink: #ffffff;
+  --muted: rgba(255, 255, 255, 0.74);
+  --line: rgba(255, 255, 255, 0.2);
+  --shadow: rgba(0, 0, 125, 0.32);
+  --font-display: "PP Monument Extended", "Monument Extended", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--blue);
+  font-family: var(--font-display);
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  overflow-x: hidden;
+  background: #061dff;
+  scrollbar-width: none;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app {
+  min-height: 100vh;
+  background: var(--active-primary, #061dff);
+}
+
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.scene canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.site-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  height: 117px;
+  padding: 41px 50px 31px 51px;
+  color: #fff;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.site-nav::before {
+  content: "";
+  position: absolute;
+  top: -23px;
+  left: 0;
+  right: 0;
+  height: 38px;
+  z-index: -1;
+  border: 1.5px solid rgba(255, 255, 255, 0.76);
+  border-top: 0;
+  border-radius: 0 0 13px 13px;
+  background:
+    linear-gradient(90deg, rgba(102, 102, 102, 0.12), rgba(255, 255, 255, 0.05) 50%, rgba(102, 102, 102, 0.16)),
+    rgba(29, 29, 29, 0.1);
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.34),
+    inset 0 -1px 14px rgba(255, 255, 255, 0.32),
+    inset 0 -10px 28px rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.site-nav > * {
+  pointer-events: auto;
+}
+
+.site-nav-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chrome-dots {
+  display: flex;
+  gap: 14px;
+  width: 163px;
+  height: 45px;
+}
+
+.social-button {
+  display: grid;
+  place-items: center;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: linear-gradient(180deg, #fff 0%, #fff 60%, rgba(255, 255, 255, 0.9) 100%);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 90, 0.16),
+    inset 0 0 10px rgba(255, 255, 255, 0.65);
+}
+
+.social-button img {
+  display: block;
+  width: 29px;
+  height: 29px;
+}
+
+.nav-mark {
+  position: absolute;
+  left: calc(50% + 3px);
+  top: -1px;
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+  width: 140px;
+  height: 108px;
+  border: 0;
+  border-radius: 0;
+  filter:
+    drop-shadow(0 0 11px rgba(255, 255, 255, 0.22))
+    drop-shadow(0 0 22px rgba(0, 35, 255, 0.18));
+}
+
+.nav-mark::before,
+.nav-mark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  clip-path: path("M0 0H140C126 17 123 38 119 64L116 82C113 98 101 108 84 108H56C39 108 27 98 24 82L21 64C17 38 14 17 0 0Z");
+  pointer-events: none;
+}
+
+.nav-mark::before {
+  z-index: 0;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.nav-mark::after {
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05)),
+    linear-gradient(180deg, rgba(40, 78, 255, 0.76), rgba(43, 72, 255, 0.48)),
+    rgba(10, 31, 255, 0.5);
+  box-shadow:
+    inset 0 0 24px rgba(255, 255, 255, 0.28),
+    inset 0 -10px 28px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px) saturate(1.2);
+  transform: scale(0.972, 0.972);
+  transform-origin: 50% 0;
+}
+
+.nav-mark img {
+  position: relative;
+  z-index: 2;
+  width: 56px;
+  height: 45px;
+  margin-top: 7px;
+}
+
+.site-nav nav {
+  grid-column: 3;
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 10px;
+  width: 440px;
+  height: 45px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+.site-nav nav a {
+  display: grid;
+  place-items: center;
+  height: 42px;
+}
+
+.site-nav nav a:first-child {
+  width: 110px;
+}
+
+.site-nav nav a:nth-child(2) {
+  width: 94px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.site-nav nav .nav-pill {
+  display: grid;
+  place-items: center;
+  min-width: 195px;
+  height: 45px;
+  margin-left: 21px;
+  padding: 0 28px;
+  color: #000;
+  border-radius: 48px;
+  background: linear-gradient(180deg, #fff 0%, #fff 60%, rgba(255, 255, 255, 0.9) 100%);
+  box-shadow:
+    0 8px 26px rgba(0, 0, 0, 0.14),
+    inset 0 0 12px rgba(255, 255, 255, 0.65);
+  font-size: 14px;
+  letter-spacing: 0.13em;
+}
+
+.section-count {
+  display: none;
+}
+
+main {
+  position: relative;
+}
+
+.panel {
+  position: relative;
+  min-height: 100vh;
+  scroll-snap-align: start;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 120px 60px 70px;
+}
+
+.panel > * {
+  position: relative;
+  z-index: 4;
+}
+
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(132deg, transparent 0 45%, rgba(255, 255, 255, 0.09) 45% 52%, transparent 52% 100%),
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.2), transparent 18rem),
+    linear-gradient(180deg, #061dff 0%, #0528ff 56%, #02e3ee 100%);
+}
+
+.panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 18% 84%, rgba(255, 255, 255, 0.08)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 112px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.theme-orange::before {
+  background:
+    linear-gradient(132deg, transparent 0 45%, rgba(255, 255, 255, 0.12) 45% 52%, transparent 52% 100%),
+    radial-gradient(circle at 60% 46%, rgba(255, 255, 255, 0.24), transparent 18rem),
+    linear-gradient(180deg, #ff3814 0%, #ff4f10 44%, #ffe800 100%);
+}
+
+.theme-green::before {
+  background:
+    linear-gradient(132deg, transparent 0 45%, rgba(255, 255, 255, 0.12) 45% 52%, transparent 52% 100%),
+    radial-gradient(circle at 60% 46%, rgba(255, 255, 255, 0.24), transparent 18rem),
+    linear-gradient(180deg, #00df20 0%, #09e22a 46%, #e8ff00 100%);
+}
+
+.theme-deep::before {
+  background: linear-gradient(180deg, #0712ec 0%, #0627ff 52%, #04dce8 100%);
+}
+
+.athora-logo {
+  display: grid;
+  place-items: center;
+  width: min(64vw, 620px);
+  line-height: 1;
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.32)) drop-shadow(0 24px 70px var(--shadow));
+}
+
+.athora-logo-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.athora-logo-large {
+  width: min(72vw, 760px);
+}
+
+.install-panel::before {
+  background:
+    radial-gradient(circle at 50% 55%, #00ffff 0%, #0019ff 43%, transparent 74%),
+    linear-gradient(180deg, #0019ff 0%, #0019ff 54%, #00ffff 100%);
+}
+
+.install-panel {
+  align-content: center;
+  gap: 30px;
+  grid-auto-rows: max-content;
+  padding: 0;
+}
+
+.install-panel .athora-logo-large {
+  width: min(351px, 82vw);
+}
+
+.install-panel .athora-logo-large,
+.install-panel .install-meter,
+.install-panel .install-copy-image {
+  transform: translateY(-4px);
+}
+
+.install-meter {
+  position: relative;
+  display: block;
+  width: min(351px, 82vw);
+  height: 50px;
+  margin-top: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 48px;
+  background:
+    linear-gradient(90deg, rgba(102, 102, 102, 0.28) 0%, rgba(255, 255, 255, 0.03) 33%, rgba(255, 255, 255, 0.1) 50%, rgba(102, 102, 102, 0.38) 100%),
+    rgba(29, 29, 29, 0.1);
+  box-shadow:
+    inset 0 0 22px rgba(242, 242, 242, 0.75),
+    inset 2px 2px 1px -2px rgba(255, 255, 255, 0.65),
+    inset -12px -20px 6px -21px rgba(215, 255, 253, 0.58),
+    inset -1px 5px 4px -3px rgba(255, 255, 255, 0.55),
+    0 24px 80px rgba(0, 0, 170, 0.28);
+  backdrop-filter: blur(18px) saturate(1.35);
+}
+
+.install-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: clamp(76px, calc(var(--progress) + 38px), 100%);
+  height: 100%;
+  border-radius: 49px;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.3) 49%, rgba(255, 255, 255, 0.4) 100%);
+  box-shadow:
+    inset 0 7px 13px rgba(255, 255, 255, 0.25),
+    26px 0 71px rgba(0, 0, 0, 0.15);
+}
+
+.install-meter strong {
+  position: absolute;
+  left: clamp(38px, var(--progress), calc(100% - 38px));
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 50px;
+  border-radius: 49px;
+  color: #0019ff;
+  background: linear-gradient(180deg, #fff 0%, #fff 60%, rgba(255, 255, 255, 0.9) 100%);
+  font-family: var(--font-display);
+  font-size: 19.63px;
+  font-weight: 600;
+  line-height: 0.86;
+  letter-spacing: -0.04em;
+  box-shadow:
+    0 0 2.5px rgba(255, 255, 255, 1),
+    inset 0 0 13.8px rgba(242, 242, 242, 0.75),
+    inset 1.25px 1.25px 0.6px -1.25px rgba(255, 255, 255, 0.65),
+    inset -7.5px -12.5px 3.75px -13px rgba(215, 255, 253, 0.58),
+    inset -0.6px 3.1px 2.5px -1.9px rgba(255, 255, 255, 0.55);
+}
+
+.install-copy-image {
+  display: block;
+  width: min(199px, 54vw);
+  height: auto;
+  filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.34));
+}
+
+.intro-panel::before {
+  background:
+    linear-gradient(132deg, transparent 0 37%, rgba(255, 255, 255, 0.09) 37% 50%, transparent 50% 100%),
+    radial-gradient(circle at 50% 83%, rgba(0, 255, 255, 0.72), transparent 19rem),
+    linear-gradient(180deg, #0019ff 0%, #0019ff 52%, #00ffff 100%);
+}
+
+.intro-panel::after {
+  opacity: 0.22;
+}
+
+.intro-panel {
+  padding: 0;
+}
+
+.intro-scroll,
+.scroll-down {
+  margin: 0;
+  color: #fff;
+  text-transform: uppercase;
+  font-size: clamp(16px, 1.7vw, 27px);
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 18px rgba(255, 255, 255, 0.45);
+}
+
+.intro-scroll {
+  position: absolute;
+  left: 50%;
+  bottom: 47px;
+  z-index: 5;
+  width: 176px;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-align: center;
+}
+
+.intro-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.glass-arrow {
+  position: absolute;
+  top: 378px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  background:
+    linear-gradient(90deg, rgba(102, 102, 102, 0.18), rgba(255, 255, 255, 0.08) 50%, rgba(102, 102, 102, 0.2)),
+    rgba(29, 29, 29, 0.2);
+  box-shadow:
+    inset 0 0 13px rgba(255, 255, 255, 0.2),
+    0 8px 20px rgba(0, 0, 130, 0.22);
+  backdrop-filter: blur(16px) saturate(1.2);
+  pointer-events: auto;
+}
+
+.glass-arrow-left {
+  left: 515px;
+}
+
+.glass-arrow-right {
+  left: 895px;
+}
+
+.glass-arrow span {
+  position: relative;
+  width: 15px;
+  height: 15px;
+}
+
+.glass-arrow span::before,
+.glass-arrow span::after {
+  content: "";
+  position: absolute;
+  display: block;
+}
+
+.glass-arrow span::before {
+  top: 50%;
+  left: 0;
+  width: 15px;
+  height: 2px;
+  border-radius: 2px;
+  background: #fff;
+  transform: translateY(-50%);
+}
+
+.glass-arrow span::after {
+  top: 3px;
+  right: 1px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #fff;
+  border-right: 2px solid #fff;
+  transform: rotate(45deg);
+}
+
+.glass-arrow-left span {
+  transform: rotate(180deg);
+}
+
+.systems-panel {
+  justify-items: start;
+}
+
+.systems-copy {
+  position: relative;
+  z-index: 3;
+  width: min(720px, 58vw);
+  margin-left: 8.8vw;
+}
+
+.pretitle {
+  margin: 0 0 31px;
+  color: rgba(255, 255, 255, 0.82);
+  text-transform: uppercase;
+  font-size: clamp(13px, 1.2vw, 18px);
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+
+.systems-list {
+  display: grid;
+  gap: 0;
+}
+
+.systems-list h2,
+.claim-panel h2,
+.price-panel h2,
+.benefits-list p,
+.split-claim-panel h2,
+.access-copy h2 {
+  margin: 0;
+  color: #fff;
+  text-transform: uppercase;
+  font-size: clamp(64px, 9.1vw, 132px);
+  font-weight: 950;
+  line-height: 0.83;
+  letter-spacing: 0;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.34), 0 22px 55px rgba(0, 0, 120, 0.2);
+}
+
+.claim-panel {
+  text-align: center;
+}
+
+.claim-panel h2 {
+  width: min(1160px, 100%);
+}
+
+.scroll-down {
+  position: absolute;
+  z-index: 5;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  letter-spacing: 0.09em;
+}
+
+.lineup-panel .athora-logo {
+  position: relative;
+  z-index: 2;
+  font-size: clamp(74px, 16vw, 230px);
+  gap: clamp(18px, 3.7vw, 58px);
+}
+
+.lineup-cans {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 47%;
+  display: flex;
+  gap: 8px;
+  transform: translate(-50%, -50%);
+  perspective: 900px;
+}
+
+.lineup-can {
+  display: grid;
+  place-items: center;
+  width: clamp(74px, 8vw, 116px);
+  height: clamp(205px, 20vw, 288px);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 28px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.04) 14% 70%, rgba(255, 255, 255, 0.46)),
+    linear-gradient(180deg, var(--can-color), #0732ff 48%, var(--can-color));
+  box-shadow: 0 28px 54px rgba(0, 0, 120, 0.33);
+  transform: rotateZ(calc((var(--index) - 1.5) * -4deg)) rotateY(-10deg);
+}
+
+.lineup-can b {
+  color: #fff;
+  font-size: clamp(28px, 4vw, 54px);
+  font-weight: 950;
+}
+
+.open-panel h2 {
+  width: min(820px, 100%);
+  margin: 0;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.42);
+  text-transform: uppercase;
+  font-size: clamp(52px, 7.9vw, 112px);
+  font-weight: 950;
+  line-height: 0.86;
+  text-shadow: 0 0 18px rgba(255, 255, 255, 0.22);
+}
+
+.open-button {
+  position: absolute;
+  bottom: 132px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 210px;
+  height: 92px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: transparent;
+  text-transform: uppercase;
+  font-size: clamp(34px, 5vw, 77px);
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.price-panel {
+  text-align: center;
+}
+
+.price-panel .pretitle {
+  margin-bottom: 22px;
+}
+
+.price-panel h2 {
+  position: relative;
+  display: inline-block;
+  font-size: clamp(58px, 7.8vw, 112px);
+}
+
+.price-panel sup {
+  position: absolute;
+  top: 0;
+  right: -0.75em;
+  font-size: 0.56em;
+}
+
+.side-numbers {
+  position: absolute;
+  left: 38.8%;
+  top: 43%;
+  display: grid;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.32);
+  font-size: clamp(40px, 5vw, 70px);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.benefits-panel {
+  justify-items: end;
+  text-align: left;
+}
+
+.benefits-list {
+  position: relative;
+  z-index: 3;
+  width: min(690px, 50vw);
+  margin-right: 2vw;
+  display: grid;
+  gap: 32px;
+}
+
+.benefits-list p {
+  font-size: clamp(42px, 5.8vw, 88px);
+  line-height: 0.88;
+}
+
+.benefits-list .large-benefit {
+  font-size: clamp(70px, 8.9vw, 132px);
+}
+
+.split-claim-panel {
+  justify-items: start;
+}
+
+.split-claim-panel h2 {
+  position: relative;
+  z-index: 3;
+  width: min(870px, 60vw);
+  margin-left: 1.6vw;
+  font-size: clamp(62px, 8.9vw, 132px);
+  line-height: 0.86;
+}
+
+.access-panel {
+  min-height: 138vh;
+  align-items: start;
+  justify-items: start;
+  padding-top: 230px;
+  padding-bottom: 0;
+}
+
+.access-copy {
+  position: relative;
+  z-index: 4;
+  width: min(520px, 45vw);
+  margin-left: 12vw;
+}
+
+.access-copy h2 {
+  font-size: clamp(70px, 8vw, 117px);
+  line-height: 0.9;
+}
+
+.access-copy form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 16px;
+  margin-top: 40px;
+}
+
+.access-copy label {
+  display: grid;
+  gap: 11px;
+}
+
+.access-copy label span {
+  color: #fff;
+  text-transform: uppercase;
+  font-size: 16px;
+  font-weight: 950;
+  letter-spacing: 0.05em;
+}
+
+.access-copy input {
+  width: 100%;
+  height: 56px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  outline: none;
+  padding: 0 22px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.13);
+  font-size: 16px;
+  font-weight: 850;
+  backdrop-filter: blur(16px);
+}
+
+.access-copy input::placeholder {
+  color: rgba(255, 255, 255, 0.54);
+}
+
+.access-copy button {
+  height: 56px;
+  min-width: 106px;
+  border: 0;
+  border-radius: 999px;
+  color: #0627ff;
+  background: #fff;
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.access-copy p {
+  max-width: 450px;
+  margin: 24px 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 10px;
+  line-height: 1.3;
+  font-weight: 850;
+}
+
+.footer-links {
+  position: absolute;
+  left: 60px;
+  right: 60px;
+  bottom: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+}
+
+.footer-spacer {
+  flex: 1;
+}
+
+@media (max-width: 760px) {
+  html {
+    scroll-snap-type: y proximity;
+  }
+
+  .site-nav {
+    top: 0;
+    left: 0;
+    right: 0;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    height: 86px;
+    padding: 22px 22px 19px;
+  }
+
+  .chrome-dots {
+    gap: 8px;
+    width: auto;
+    height: 34px;
+  }
+
+  .social-button {
+    width: 34px;
+    height: 34px;
+  }
+
+  .social-button img {
+    width: 22px;
+    height: 22px;
+  }
+
+  .nav-mark {
+    top: 0;
+    width: 76px;
+    height: 64px;
+    border-radius: 0 0 16px 16px;
+  }
+
+  .nav-mark img {
+    width: 42px;
+    height: 35px;
+    margin-top: 4px;
+  }
+
+  .site-nav nav {
+    justify-self: end;
+    gap: 0;
+    width: auto;
+    font-size: 8px;
+  }
+
+  .site-nav nav a:not(.nav-pill) {
+    display: none;
+  }
+
+  .site-nav nav .nav-pill {
+    min-width: 118px;
+    height: 34px;
+    margin-left: 0;
+    padding: 0 16px;
+    font-size: 9px;
+  }
+
+  .section-count {
+    display: none;
+  }
+
+  .panel {
+    min-height: 100svh;
+    padding: 86px 23px 52px;
+  }
+
+  .athora-logo {
+    width: min(74vw, 351px);
+  }
+
+  .athora-logo-large {
+    width: min(82vw, 351px);
+  }
+
+  .install-meter {
+    width: min(286px, 82vw);
+    height: 40px;
+  }
+
+  .install-panel .athora-logo-large {
+    width: min(286px, 82vw);
+  }
+
+  .install-panel .athora-logo-large,
+  .install-panel .install-meter,
+  .install-panel .install-copy-image {
+    transform: translateY(-2px);
+  }
+
+  .install-meter strong {
+    width: 62px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .install-copy-image {
+    width: min(166px, 54vw);
+  }
+
+  .scroll-down {
+    font-size: 12px;
+  }
+
+  .intro-scroll {
+    bottom: 70px;
+    width: 150px;
+    font-size: 12px;
+  }
+
+  .glass-arrow {
+    top: 48%;
+    width: 34px;
+    height: 34px;
+  }
+
+  .glass-arrow-left {
+    left: 24px;
+  }
+
+  .glass-arrow-right {
+    left: auto;
+    right: 24px;
+  }
+
+  .systems-panel {
+    align-items: end;
+  }
+
+  .systems-copy {
+    width: 100%;
+    margin-left: 0;
+    padding-bottom: 74px;
+  }
+
+  .pretitle {
+    margin-bottom: 18px;
+    font-size: 10px;
+  }
+
+  .systems-list h2,
+  .claim-panel h2,
+  .price-panel h2,
+  .benefits-list p,
+  .split-claim-panel h2,
+  .access-copy h2 {
+    font-size: clamp(50px, 17vw, 74px);
+  }
+
+  .claim-panel h2 {
+    width: 100%;
+  }
+
+  .scroll-down {
+    bottom: 42px;
+  }
+
+  .lineup-cans {
+    top: 47%;
+  }
+
+  .lineup-can {
+    width: 56px;
+    height: 174px;
+    border-radius: 19px;
+  }
+
+  .lineup-panel .athora-logo {
+    font-size: clamp(46px, 16vw, 70px);
+  }
+
+  .open-panel h2 {
+    font-size: clamp(46px, 15vw, 66px);
+  }
+
+  .open-button {
+    bottom: 76px;
+    font-size: clamp(36px, 17vw, 78px);
+  }
+
+  .side-numbers {
+    left: 22px;
+    top: 40%;
+    font-size: 42px;
+  }
+
+  .benefits-panel {
+    align-items: end;
+    justify-items: start;
+  }
+
+  .benefits-list {
+    width: 100%;
+    margin: 0 0 78px;
+    gap: 20px;
+  }
+
+  .benefits-list .large-benefit {
+    font-size: clamp(58px, 18vw, 86px);
+  }
+
+  .split-claim-panel {
+    align-items: end;
+  }
+
+  .split-claim-panel h2 {
+    width: 100%;
+    margin: 0 0 98px;
+  }
+
+  .access-panel {
+    min-height: 126svh;
+    padding-top: 154px;
+  }
+
+  .access-copy {
+    width: 100%;
+    margin: 0;
+  }
+
+  .access-copy form {
+    grid-template-columns: 1fr;
+    margin-top: 28px;
+  }
+
+  .access-copy input,
+  .access-copy button {
+    height: 50px;
+  }
+
+  .footer-links {
+    left: 22px;
+    right: 22px;
+    bottom: 34px;
+    flex-wrap: wrap;
+    font-size: 8px;
+    line-height: 1.5;
+  }
+
+  .footer-spacer {
+    flex-basis: 100%;
+    height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
