@@ -4,9 +4,7 @@
     local("PP Monument Extended"),
     local("PP Monument Extended Regular"),
     local("Monument Extended"),
-    local("Monument Extended Regular"),
-    url("/fonts/PPMonumentExtended-Variable.woff2") format("woff2-variations"),
-    url("/fonts/PPMonumentExtended-Regular.woff2") format("woff2");
+    local("Monument Extended Regular");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;

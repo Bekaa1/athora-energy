@@ -6,6 +6,8 @@ PPMonumentExtended-Variable.woff2
 Fallback file name:
 PPMonumentExtended-Regular.woff2
 
-The CSS in src/styles.css already points to these paths:
+When the actual font file is available, add its url() source to the
+@font-face block in src/styles.css:
+
 /fonts/PPMonumentExtended-Variable.woff2
 /fonts/PPMonumentExtended-Regular.woff2
