@@ -1,0 +1,30 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" viewBox="0 0 1440 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <path id="navShape" d="M1440 19C1440 29.4934 1431.49 38 1421 38H795.606C791.753 38 788.078 39.634 785.088 42.0645C777.21 48.4681 773.487 64.7909 771.727 82.8936C769.504 105.757 768.392 117.189 761.954 123.346C761.632 123.653 761.364 123.898 761.026 124.188C754.276 130.001 743.85 130 723 130C702.097 130 691.645 130 684.911 124.245C684.573 123.956 684.307 123.717 683.984 123.41C677.558 117.313 676.356 105.843 673.951 82.9033C672.029 64.5689 668.218 48.5539 660.735 42.1572C657.804 39.6511 654.122 38 650.265 38H19C8.50661 38 0 29.4934 0 19C0 8.50659 8.50659 0 19 0H1421C1431.49 0 1440 8.50659 1440 19Z"/>
+    <linearGradient id="glassFill" x1="720" y1="0" x2="720" y2="130" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A2CFF" stop-opacity="0.18"/>
+      <stop offset="0.3" stop-color="#061EFF" stop-opacity="0.2"/>
+      <stop offset="0.62" stop-color="#0417DB" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#0828FF" stop-opacity="0.3"/>
+    </linearGradient>
+    <linearGradient id="glassSheen" x1="0" y1="0" x2="1440" y2="116" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.025"/>
+      <stop offset="0.44" stop-color="#FFFFFF" stop-opacity="0.11"/>
+      <stop offset="0.58" stop-color="#7EDBFF" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.035"/>
+    </linearGradient>
+    <linearGradient id="glassStroke" x1="720" y1="0" x2="720" y2="130" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.78"/>
+      <stop offset="0.53" stop-color="#FFFFFF" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.86"/>
+    </linearGradient>
+    <filter id="softGlow" x="-22" y="-24" width="1484" height="178" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#FFFFFF" flood-opacity="0.24"/>
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#0019FF" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <use href="#navShape" fill="url(#glassFill)" filter="url(#softGlow)"/>
+  <use href="#navShape" fill="url(#glassSheen)" opacity="0.85"/>
+  <use href="#navShape" stroke="url(#glassStroke)" stroke-width="2"/>
+  <use href="#navShape" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="1"/>
+</svg>

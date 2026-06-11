@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -46,7 +46,7 @@ const sections = [
     headline: 'ATHORA',
     subcopy: 'Scroll down',
     theme: 'blue',
-    modelState: { x: 0, y: 0.02, z: 0, scale: 0.82, rotate: 0, scene: 3, opacity: 1 },
+    modelState: { x: 0, y: -0.04, z: 0, scale: 0.86, rotate: 0, scene: 3, opacity: 1, asset: 'screen1', spin: 0 },
   },
   {
     id: 'all-systems',
@@ -54,7 +54,9 @@ const sections = [
     pretitle: 'every day PEOPLE manage',
     items: ['Hydration', 'Energy', 'Vitamins', 'Immunity'],
     theme: 'blue',
-    modelState: { x: 1.75, y: 0.1, z: 0, scale: 1.02, rotate: -0.55, scene: 3, opacity: 1 },
+    figmaVariant: 'hydration',
+    figmaCan: '/figma-systems/hydration-can-render.png',
+    modelState: { x: 1.72, y: 0.05, z: 0, scale: 1.12, rotate: -0.46, scene: 3, opacity: 0 },
   },
   {
     id: 'energy',
@@ -62,7 +64,9 @@ const sections = [
     pretitle: 'every day PEOPLE manage',
     items: ['Energy', 'Vitamins', 'Immunity'],
     theme: 'orange',
-    modelState: { x: 1.85, y: 0.05, z: 0, scale: 1.02, rotate: 0.72, scene: 3, opacity: 1 },
+    figmaVariant: 'energy',
+    figmaCan: '/figma-systems/energy-can-render.png',
+    modelState: { x: 1.85, y: 0.05, z: 0, scale: 1.02, rotate: 0.72, scene: 3, opacity: 0 },
   },
   {
     id: 'vitamins',
@@ -70,7 +74,9 @@ const sections = [
     pretitle: 'every day PEOPLE manage',
     items: ['Vitamins', 'Immunity'],
     theme: 'green',
-    modelState: { x: 1.65, y: 0.08, z: 0, scale: 1.02, rotate: -0.25, scene: 3, opacity: 1 },
+    figmaVariant: 'vitamins',
+    figmaCan: '/figma-systems/vitamins-can-render.png',
+    modelState: { x: 1.65, y: 0.08, z: 0, scale: 1.02, rotate: -0.25, scene: 3, opacity: 0 },
   },
   {
     id: 'five-products',
@@ -165,6 +171,9 @@ const sections = [
   },
 ];
 
+const INTRO_REVEAL_PREP_MS = 320;
+const INTRO_REVEAL_DURATION_MS = 900;
+
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
@@ -181,6 +190,8 @@ function interpolateState(a, b, t) {
     scale: lerp(a.scale, b.scale, t),
     rotate: lerp(a.rotate, b.rotate, t),
     opacity: lerp(a.opacity, b.opacity, t),
+    spin: lerp(a.spin ?? 0.26, b.spin ?? 0.26, t),
+    asset: t < 0.5 ? a.asset : b.asset,
     scene: t < 0.5 ? a.scene : b.scene,
   };
 }
@@ -190,11 +201,20 @@ function useScrollModelState() {
     progress: 0,
     activeIndex: 0,
     sectionProgress: 0,
+    showNav: false,
     modelState: sections[0].modelState,
   });
 
   useEffect(() => {
     let frame = 0;
+
+    const alignHashSection = () => {
+      if (!window.location.hash) return;
+      const target = document.getElementById(window.location.hash.slice(1));
+      if (target) {
+        window.scrollTo({ top: target.offsetTop, behavior: 'auto' });
+      }
+    };
 
     const update = () => {
       cancelAnimationFrame(frame);
@@ -205,23 +225,36 @@ function useScrollModelState() {
         const sectionProgress = clamp(rawIndex - activeIndex, 0, 1);
         const current = sections[activeIndex].modelState;
         const next = sections[Math.min(activeIndex + 1, sections.length - 1)].modelState;
+        const showNav = rawIndex >= 0.72 || window.location.hash === '#intro';
 
         setState({
           progress: rawIndex / Math.max(sections.length - 1, 1),
           activeIndex,
           sectionProgress,
+          showNav,
           modelState: interpolateState(current, next, sectionProgress),
         });
       });
     };
 
+    const sync = () => {
+      alignHashSection();
+      update();
+    };
+
     update();
+    const delayedUpdates = [80, 220, 480, 900].map((delay) => window.setTimeout(sync, delay));
     window.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
+    window.addEventListener('resize', sync);
+    window.addEventListener('hashchange', sync);
+    window.addEventListener('load', sync);
     return () => {
       cancelAnimationFrame(frame);
+      delayedUpdates.forEach((timer) => window.clearTimeout(timer));
       window.removeEventListener('scroll', update);
-      window.removeEventListener('resize', update);
+      window.removeEventListener('resize', sync);
+      window.removeEventListener('hashchange', sync);
+      window.removeEventListener('load', sync);
     };
   }, []);
 
@@ -274,13 +307,37 @@ function AthoraScene({ modelState }) {
     modelWrap.add(fallback);
 
     const sceneVariants = [];
+    const assetVariants = { fallback };
     let activeVariant = fallback;
 
     const loader = new GLTFLoader();
+    const prepareClone = (clone, targetHeight = 3.35) => {
+      clone.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          if (child.material) {
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            child.material = Array.isArray(child.material)
+              ? materials.map((material) => material.clone())
+              : child.material.clone();
+            const clonedMaterials = Array.isArray(child.material) ? child.material : [child.material];
+            clonedMaterials.forEach((material) => {
+              material.transparent = material.transparent || material.opacity < 1;
+              material.needsUpdate = true;
+            });
+          }
+        }
+      });
+      normalizeObject(clone, targetHeight);
+      clone.visible = false;
+      modelWrap.add(clone);
+      return clone;
+    };
+
     loader.load(
       '/blender-files/Final.glb',
       (gltf) => {
-        fallback.visible = false;
         gltf.scenes.forEach((variant, index) => {
           const clone = variant.clone(true);
           if (index === 0) {
@@ -294,28 +351,36 @@ function AthoraScene({ modelState }) {
             });
             sceneHelpers.forEach((child) => child.parent?.remove(child));
           }
-          normalizeObject(clone, 3.35);
-          clone.visible = index === (modelStateRef.current.scene || 0);
-          clone.traverse((child) => {
-            if (child.isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-              if (child.material) {
-                child.material = child.material.clone();
-                child.material.transparent = child.material.transparent || child.material.opacity < 1;
-                child.material.needsUpdate = true;
-              }
-            }
-          });
-          sceneVariants[index] = clone;
-          modelWrap.add(clone);
+          sceneVariants[index] = prepareClone(clone, 3.35);
+          sceneVariants[index].visible = index === (modelStateRef.current.scene || 0);
         });
 
-        activeVariant = sceneVariants[modelStateRef.current.scene] || sceneVariants[0] || fallback;
+        activeVariant = sceneVariants[modelStateRef.current.scene] || fallback;
       },
       undefined,
       () => {
         fallback.visible = true;
+      }
+    );
+
+    loader.load(
+      '/blender-files/screens/1screen.glb',
+      (gltf) => {
+        const clone = gltf.scene.clone(true);
+        const helpers = [];
+        clone.traverse((child) => {
+          const materials = child.material ? (Array.isArray(child.material) ? child.material : [child.material]) : [];
+          const materialNames = materials.map((material) => material.name);
+          if (child.name === 'Cylinder.004' || materialNames.includes('Glow') || materialNames.includes('Base.001')) {
+            helpers.push(child);
+          }
+        });
+        helpers.forEach((child) => child.parent?.remove(child));
+        assetVariants.screen1 = prepareClone(clone, 3.35);
+      },
+      undefined,
+      () => {
+        assetVariants.screen1 = undefined;
       }
     );
 
@@ -349,7 +414,7 @@ function AthoraScene({ modelState }) {
       const elapsed = clock.elapsedTime;
       const target = modelStateRef.current;
 
-      const wantedVariant = sceneVariants[target.scene] || activeVariant || fallback;
+      const wantedVariant = target.asset ? assetVariants[target.asset] || fallback : sceneVariants[target.scene] || fallback;
       if (wantedVariant !== activeVariant) {
         if (activeVariant) activeVariant.visible = false;
         wantedVariant.visible = true;
@@ -359,16 +424,22 @@ function AthoraScene({ modelState }) {
       modelWrap.position.x = lerp(modelWrap.position.x, target.x, 0.06);
       modelWrap.position.y = lerp(modelWrap.position.y, target.y, 0.06);
       modelWrap.position.z = lerp(modelWrap.position.z, target.z, 0.06);
-      const viewportScale = mount.clientWidth < 620 ? 0.58 : 1;
+      const viewportScale = mount.clientWidth < 620 ? 0.92 : 1;
       const liveScale = target.scale * viewportScale * (1 + Math.sin(elapsed * 1.5) * 0.012);
       modelWrap.scale.setScalar(lerp(modelWrap.scale.x, liveScale, 0.06));
-      modelWrap.rotation.y = lerp(modelWrap.rotation.y, target.rotate + elapsed * 0.26, 0.05);
+      modelWrap.rotation.y = lerp(modelWrap.rotation.y, target.rotate + elapsed * (target.spin ?? 0.26), 0.05);
       modelWrap.rotation.z = lerp(modelWrap.rotation.z, Math.sin(elapsed * 0.6) * 0.055, 0.05);
 
       modelWrap.traverse((child) => {
         if (child.isMesh && child.material) {
-          child.material.opacity = target.opacity;
-          child.material.transparent = true;
+          const materials = Array.isArray(child.material) ? child.material : [child.material];
+          materials.forEach((material) => {
+            if (material.userData.baseOpacity === undefined) {
+              material.userData.baseOpacity = material.opacity ?? 1;
+            }
+            material.opacity = material.userData.baseOpacity * target.opacity;
+            material.transparent = material.transparent || material.opacity < 1;
+          });
         }
       });
 
@@ -429,9 +500,9 @@ function createFallbackCan() {
 
 function ChromeDots() {
   const socials = [
-    { label: 'Instagram', icon: '/icon-instagram.svg' },
-    { label: 'X', icon: '/icon-x.svg' },
-    { label: 'TikTok', icon: '/icon-tiktok.svg' },
+    { label: 'Instagram', icon: '/figma-nav/social-instagram.svg' },
+    { label: 'X', icon: '/figma-nav/social-x.svg' },
+    { label: 'TikTok', icon: '/figma-nav/social-tiktok.svg' },
   ];
 
   return (
@@ -453,12 +524,24 @@ function AthoraLogo({ large = false }) {
   );
 }
 
-function Navigation({ activeIndex }) {
+function FigmaHeroBackground() {
   return (
-    <header className={activeIndex === 0 ? 'site-nav site-nav-hidden' : 'site-nav'}>
+    <div className="figma-hero-bg" aria-hidden="true">
+      <div className="figma-hero-bg-canvas">
+        <img className="figma-bg-base" src="/figma-hero/background-main.png" alt="" />
+        <img className="figma-bg-berry" src="/figma-hero/berry-right-cutout.png" alt="" />
+      </div>
+    </div>
+  );
+}
+
+function Navigation({ activeIndex, showNav }) {
+  return (
+    <header className={showNav ? 'site-nav' : 'site-nav site-nav-hidden'}>
+      <img className="nav-frame-glass" src="/figma-nav/nav-frame.svg" alt="" aria-hidden="true" />
       <ChromeDots />
       <a className="nav-mark" href="#installing" aria-label="ATHORA home">
-        <img src="/nav-mark.svg" alt="" aria-hidden="true" />
+        <img src="/figma-nav/nav-union.svg" alt="" aria-hidden="true" />
       </a>
       <nav aria-label="Primary navigation">
         <a href="#all-systems">Product</a>
@@ -472,7 +555,7 @@ function Navigation({ activeIndex }) {
   );
 }
 
-function InstallSection({ section }) {
+function InstallSection({ section, onIntroReveal }) {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
@@ -482,8 +565,8 @@ function InstallSection({ section }) {
 
     const tick = (now) => {
       const elapsed = now - startedAt;
-      const eased = 1 - Math.pow(1 - clamp(elapsed / duration, 0, 1), 3);
-      setProgress(Math.round(eased * 100));
+      const progressValue = clamp(elapsed / duration, 0, 1);
+      setProgress(Math.round(progressValue * 100));
       if (elapsed < duration) {
         raf = requestAnimationFrame(tick);
       }
@@ -492,6 +575,16 @@ function InstallSection({ section }) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, []);
+
+  useEffect(() => {
+    if (progress < 100) return undefined;
+
+    const timer = window.setTimeout(() => {
+      onIntroReveal?.();
+    }, 2000);
+
+    return () => window.clearTimeout(timer);
+  }, [onIntroReveal, progress]);
 
   return (
     <section className={`panel install-panel ${SECTION_THEMES[section.theme].className}`} id={section.id}>
@@ -509,9 +602,28 @@ function InstallSection({ section }) {
   );
 }
 
+function PreloaderTransitionOverlay({ phase }) {
+  if (phase === 'idle' || phase === 'done') return null;
+
+  return (
+    <div className={`intro-reveal-overlay intro-reveal-overlay-${phase}`} aria-hidden="true">
+      <div className="intro-reveal-can" />
+      <div className="intro-reveal-ui">
+        <AthoraLogo large />
+        <div className="install-meter" aria-label="Installation progress 100 percent" style={{ '--progress': '100%' }}>
+          <div className="install-fill" />
+          <strong>100%</strong>
+        </div>
+        <img className="install-copy-image" src="/installing-text.svg" alt="" />
+      </div>
+    </div>
+  );
+}
+
 function IntroSection({ section }) {
   return (
     <section className={`panel intro-panel ${SECTION_THEMES[section.theme].className}`} id={section.id}>
+      <FigmaHeroBackground />
       <div className="intro-controls" aria-hidden="true">
         <button className="glass-arrow glass-arrow-left" type="button" tabIndex="-1">
           <span />
@@ -526,16 +638,33 @@ function IntroSection({ section }) {
 }
 
 function SystemsSection({ section }) {
+  const isFigmaSystems = Boolean(section.figmaVariant);
+
   return (
-    <section className={`panel systems-panel ${SECTION_THEMES[section.theme].className}`} id={section.id}>
+    <section
+      className={`panel systems-panel ${
+        isFigmaSystems ? `systems-panel-figma systems-panel-figma-${section.figmaVariant}` : ''
+      } ${SECTION_THEMES[section.theme].className}`}
+      id={section.id}
+    >
       <div className="systems-copy">
         <p className="pretitle">{section.pretitle}</p>
         <div className="systems-list">
-          {section.items.map((item) => (
-            <h2 key={item}>{item}</h2>
+          {section.items.map((item, index) => (
+            <h2 className={isFigmaSystems ? `systems-word systems-word-${index}` : ''} key={item}>
+              {item}
+            </h2>
           ))}
         </div>
       </div>
+      {isFigmaSystems && (
+        <img
+          className={`systems-figma-can systems-figma-can-${section.figmaVariant}`}
+          src={section.figmaCan}
+          alt=""
+          aria-hidden="true"
+        />
+      )}
       <ScrollDown />
     </section>
   );
@@ -662,10 +791,10 @@ function ScrollDown() {
   return <p className="scroll-down">Scroll down</p>;
 }
 
-function SectionRenderer({ section }) {
+function SectionRenderer({ section, onIntroReveal }) {
   switch (section.type) {
     case 'install':
-      return <InstallSection section={section} />;
+      return <InstallSection section={section} onIntroReveal={onIntroReveal} />;
     case 'intro':
       return <IntroSection section={section} />;
     case 'systems':
@@ -688,8 +817,73 @@ function SectionRenderer({ section }) {
 }
 
 function App() {
-  const { activeIndex, modelState } = useScrollModelState();
+  const { activeIndex, modelState, showNav } = useScrollModelState();
   const activeTheme = useMemo(() => SECTION_THEMES[sections[activeIndex]?.theme || 'blue'], [activeIndex]);
+  const [introRevealPhase, setIntroRevealPhase] = useState('idle');
+  const introRevealPhaseRef = useRef('idle');
+  const introRevealTimersRef = useRef([]);
+  const restoreScrollStylesRef = useRef(() => {});
+
+  useEffect(() => {
+    introRevealPhaseRef.current = introRevealPhase;
+  }, [introRevealPhase]);
+
+  useEffect(() => {
+    return () => {
+      introRevealTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      introRevealTimersRef.current = [];
+      restoreScrollStylesRef.current();
+    };
+  }, []);
+
+  const startIntroReveal = useCallback(() => {
+    if (introRevealPhaseRef.current !== 'idle') return;
+
+    const intro = document.getElementById('intro');
+    if (!intro) return;
+
+    const stillOnPreloader = window.scrollY < window.innerHeight * 0.6;
+    if (!stillOnPreloader) return;
+
+    const root = document.documentElement;
+    const previousSnapType = root.style.scrollSnapType;
+    const previousScrollBehavior = root.style.scrollBehavior;
+
+    root.style.scrollSnapType = 'none';
+    root.style.scrollBehavior = 'auto';
+    restoreScrollStylesRef.current = () => {
+      root.style.scrollSnapType = previousSnapType;
+      root.style.scrollBehavior = previousScrollBehavior;
+      restoreScrollStylesRef.current = () => {};
+    };
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      window.scrollTo(0, intro.offsetTop);
+      restoreScrollStylesRef.current();
+      setIntroRevealPhase('done');
+      return;
+    }
+
+    setIntroRevealPhase('preparing');
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.scrollTo(0, intro.offsetTop);
+
+        const revealTimer = window.setTimeout(() => {
+          setIntroRevealPhase('revealing');
+        }, INTRO_REVEAL_PREP_MS);
+
+        const doneTimer = window.setTimeout(() => {
+          restoreScrollStylesRef.current();
+          setIntroRevealPhase('done');
+        }, INTRO_REVEAL_PREP_MS + INTRO_REVEAL_DURATION_MS + 80);
+
+        introRevealTimersRef.current.push(revealTimer, doneTimer);
+      });
+    });
+  }, []);
 
   return (
     <div
@@ -701,10 +895,11 @@ function App() {
       }}
     >
       <AthoraScene modelState={modelState} />
-      <Navigation activeIndex={activeIndex} />
+      <Navigation activeIndex={activeIndex} showNav={showNav} />
+      <PreloaderTransitionOverlay phase={introRevealPhase} />
       <main>
         {sections.map((section) => (
-          <SectionRenderer section={section} key={section.id} />
+          <SectionRenderer section={section} key={section.id} onIntroReveal={startIntroReveal} />
         ))}
       </main>
     </div>
