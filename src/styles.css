@@ -334,13 +334,15 @@ main {
 
 .athora-logo-text {
   display: block;
+  min-width: 0;
+  width: 100%;
   font-family: var(--font-display);
   font-size: clamp(42px, 6.1vw, 76px);
   font-weight: 400;
   line-height: 0.88;
   letter-spacing: 0.19em;
+  text-align: center;
   white-space: nowrap;
-  transform: translateX(0.095em);
 }
 
 .athora-logo-large {
@@ -372,7 +374,8 @@ main {
 }
 
 .install-panel .athora-logo-large {
-  width: min(351px, 82vw);
+  width: fit-content;
+  max-width: 82vw;
 }
 
 .install-panel .athora-logo-large,
@@ -422,7 +425,8 @@ main {
 }
 
 .intro-reveal-ui .athora-logo-large {
-  width: min(351px, 82vw);
+  width: fit-content;
+  max-width: 82vw;
 }
 
 .intro-reveal-can {
@@ -1863,7 +1867,8 @@ main {
   }
 
   .install-panel .athora-logo-large {
-    width: min(314px, 82vw);
+    width: fit-content;
+    max-width: 82vw;
   }
 
   .intro-reveal-ui {
@@ -1871,7 +1876,8 @@ main {
   }
 
   .intro-reveal-ui .athora-logo-large {
-    width: min(314px, 82vw);
+    width: fit-content;
+    max-width: 82vw;
   }
 
   .install-panel .athora-logo-large,
