@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import './styles.css';
 
@@ -38,7 +39,7 @@ const sections = [
     headline: 'ATHORA',
     subcopy: 'Installing...',
     theme: 'blue',
-    modelState: { x: 0, y: 0.26, z: 0, scale: 0.84, rotate: 0, scene: 3, opacity: 0.15 },
+    modelState: { x: 0, y: 0.26, z: 0, scale: 0.84, rotate: 0, scene: 3, opacity: 0 },
   },
   {
     id: 'intro',
@@ -46,7 +47,20 @@ const sections = [
     headline: 'ATHORA',
     subcopy: 'Scroll down',
     theme: 'blue',
-    modelState: { x: 0, y: -0.04, z: 0, scale: 0.86, rotate: 0, scene: 3, opacity: 0, asset: 'screen1', spin: 0 },
+    modelState: {
+      x: 0,
+      y: -0.065,
+      z: 0,
+      scale: 0.86,
+      rotate: 0.02,
+      tilt: 0,
+      scene: 3,
+      opacity: 1,
+      asset: 'screen1',
+      clipProgress: 0,
+      spin: 0,
+      floatTilt: 0.01,
+    },
   },
   {
     id: 'all-systems',
@@ -55,8 +69,23 @@ const sections = [
     items: ['Hydration', 'Energy', 'Vitamins', 'Immunity'],
     theme: 'blue',
     figmaVariant: 'hydration',
-    figmaCan: '/figma-systems/hydration-can-render.png',
-    modelState: { x: 1.72, y: 0.05, z: 0, scale: 1.12, rotate: -0.46, scene: 3, opacity: 0 },
+    wordStepScroll: true,
+    modelTransitionStart: 0.82,
+    modelState: {
+      x: 1.34,
+      y: -0.92,
+      z: 0,
+      scale: 1.38,
+      rotate: -0.64,
+      tilt: -0.42,
+      pitch: -0.4,
+      scene: 3,
+      opacity: 1,
+      asset: 'screen1',
+      clipProgress: 0.35,
+      spin: 0,
+      floatTilt: 0.01,
+    },
   },
   {
     id: 'energy',
@@ -80,31 +109,25 @@ const sections = [
   },
   {
     id: 'five-products',
-    type: 'claim',
-    headline: '5 products 1 body',
-    headlineLines: ['5 products', '1 body'],
+    type: 'claim-stack',
     theme: 'blue',
-    figmaClaim: 'five-products',
+    figmaClaim: 'claim-stack',
+    claims: [
+      {
+        id: 'five-products',
+        headlineLines: ['5 PRODUCTS', '1 BODY'],
+      },
+      {
+        id: 'separate',
+        headlineLines: ['WHY ARE THEY', 'SEPARATE?'],
+        mobileHeadlineLines: ['WHY', 'ARE THEY', 'SEPARATE?'],
+      },
+      {
+        id: 'simplified',
+        headlineLines: ['SO WE', 'SIMPLIFIED IT'],
+      },
+    ],
     modelState: { x: 0, y: 0.1, z: 0, scale: 0.82, rotate: 0.15, scene: 3, opacity: 0 },
-  },
-  {
-    id: 'separate',
-    type: 'claim',
-    headline: 'WHY ARe They separate?',
-    headlineLines: ['WHY ARE THEY', 'SEPARATE?'],
-    mobileHeadlineLines: ['WHY', 'ARE THEY', 'SEPARATE?'],
-    theme: 'blue',
-    figmaClaim: 'separate',
-    modelState: { x: -1.9, y: -0.05, z: 0, scale: 0.9, rotate: -0.8, scene: 3, opacity: 0 },
-  },
-  {
-    id: 'simplified',
-    type: 'claim',
-    headline: 'So We simplified it',
-    headlineLines: ['SO WE', 'SIMPLIFIED IT'],
-    theme: 'blue',
-    figmaClaim: 'simplified',
-    modelState: { x: 1.9, y: -0.05, z: 0, scale: 0.9, rotate: 0.85, scene: 3, opacity: 0 },
   },
   {
     id: 'lineup',
@@ -134,22 +157,24 @@ const sections = [
   },
   {
     id: 'ten-day',
-    type: 'price',
-    pretitle: 'multiple products',
-    headline: '$10+ / DAY',
+    type: 'price-stack',
     footnote: '*',
-    figmaPrice: 'multiple',
+    figmaPrice: 'comparison-stack',
     theme: 'blue',
+    prices: [
+      {
+        id: 'ten-day',
+        pretitle: 'MULTIPLE PRODUCTS',
+        value: '10',
+      },
+      {
+        id: 'one-day',
+        pretitle: 'ATHORA',
+        value: '4',
+      },
+    ],
+    valueSequence: ['10', '9', '8', '7', '6', '5', '4'],
     modelState: { x: -1.85, y: 0.08, z: 0, scale: 0.88, rotate: -0.75, scene: 3, opacity: 0 },
-  },
-  {
-    id: 'one-day',
-    type: 'price',
-    headline: '$4 / DAY',
-    footnote: '*',
-    figmaPrice: 'single',
-    theme: 'blue',
-    modelState: { x: 1.85, y: 0.05, z: 0, scale: 0.88, rotate: 0.75, scene: 3, opacity: 0 },
   },
   {
     id: 'fruit',
@@ -192,6 +217,11 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+function smoothstep(edge0, edge1, value) {
+  const t = clamp((value - edge0) / Math.max(edge1 - edge0, 0.001), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
 function lerp(start, end, t) {
   return start + (end - start) * t;
 }
@@ -203,8 +233,12 @@ function interpolateState(a, b, t) {
     z: lerp(a.z, b.z, t),
     scale: lerp(a.scale, b.scale, t),
     rotate: lerp(a.rotate, b.rotate, t),
+    tilt: lerp(a.tilt ?? 0, b.tilt ?? 0, t),
+    pitch: lerp(a.pitch ?? 0, b.pitch ?? 0, t),
     opacity: lerp(a.opacity, b.opacity, t),
     spin: lerp(a.spin ?? 0.26, b.spin ?? 0.26, t),
+    floatTilt: lerp(a.floatTilt ?? 0.055, b.floatTilt ?? 0.055, t),
+    clipProgress: lerp(a.clipProgress ?? 0, b.clipProgress ?? 0, t),
     asset: t < 0.5 ? a.asset : b.asset,
     scene: t < 0.5 ? a.scene : b.scene,
   };
@@ -222,11 +256,13 @@ function useScrollModelState() {
   useEffect(() => {
     let frame = 0;
 
+    const getDocumentTop = (element) => window.scrollY + element.getBoundingClientRect().top;
+
     const alignHashSection = () => {
       if (!window.location.hash) return;
       const target = document.getElementById(window.location.hash.slice(1));
       if (target) {
-        window.scrollTo({ top: target.offsetTop, behavior: 'auto' });
+        window.scrollTo({ top: getDocumentTop(target), behavior: 'auto' });
       }
     };
 
@@ -234,19 +270,52 @@ function useScrollModelState() {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const sectionHeight = Math.max(window.innerHeight, 1);
-        const rawIndex = window.scrollY / sectionHeight;
-        const activeIndex = clamp(Math.floor(rawIndex), 0, sections.length - 1);
-        const sectionProgress = clamp(rawIndex - activeIndex, 0, 1);
-        const current = sections[activeIndex].modelState;
+        const metrics = sections
+          .map((section) => {
+            const element = document.getElementById(section.id);
+            if (!element) return null;
+
+            const top = getDocumentTop(element);
+            return {
+              top,
+              height: Math.max(element.offsetHeight, sectionHeight),
+            };
+          })
+          .filter(Boolean);
+
+        if (!metrics.length) return;
+
+        const scrollY = window.scrollY;
+        let activeIndex = metrics.findIndex((metric, index) => {
+          const nextTop = metrics[index + 1]?.top ?? Number.POSITIVE_INFINITY;
+          return scrollY >= metric.top - 1 && scrollY < nextTop - 1;
+        });
+
+        if (activeIndex === -1) {
+          activeIndex = scrollY < metrics[0].top ? 0 : metrics.length - 1;
+        }
+
+        const currentMetric = metrics[activeIndex];
+        const nextMetric = metrics[Math.min(activeIndex + 1, metrics.length - 1)];
+        const sectionEnd = nextMetric?.top > currentMetric.top ? nextMetric.top : currentMetric.top + currentMetric.height;
+        const sectionProgress = clamp((scrollY - currentMetric.top) / Math.max(sectionEnd - currentMetric.top, 1), 0, 1);
+        const currentSection = sections[activeIndex];
+        const current = currentSection.modelState;
         const next = sections[Math.min(activeIndex + 1, sections.length - 1)].modelState;
-        const showNav = rawIndex >= 0.72 || window.location.hash === '#intro';
+        const modelTransitionStart = currentSection.modelTransitionStart ?? 0;
+        const modelProgress =
+          modelTransitionStart > 0
+            ? clamp((sectionProgress - modelTransitionStart) / Math.max(1 - modelTransitionStart, 0.001), 0, 1)
+            : sectionProgress;
+        const totalScrollable = Math.max(document.documentElement.scrollHeight - sectionHeight, 1);
+        const showNav = scrollY >= sectionHeight * 0.72 || window.location.hash === '#intro';
 
         setState({
-          progress: rawIndex / Math.max(sections.length - 1, 1),
+          progress: clamp(scrollY / totalScrollable, 0, 1),
           activeIndex,
           sectionProgress,
           showNav,
-          modelState: interpolateState(current, next, sectionProgress),
+          modelState: interpolateState(current, next, modelProgress),
         });
       });
     };
@@ -273,6 +342,143 @@ function useScrollModelState() {
   }, []);
 
   return state;
+}
+
+function useStartAtPreloaderOnPageLoad() {
+  useLayoutEffect(() => {
+    const canControlScrollRestoration = 'scrollRestoration' in window.history;
+    const previousScrollRestoration = canControlScrollRestoration ? window.history.scrollRestoration : null;
+    const root = document.documentElement;
+    const previousScrollBehavior = root.style.scrollBehavior;
+
+    if (canControlScrollRestoration) {
+      window.history.scrollRestoration = 'manual';
+    }
+
+    if (window.location.hash) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    }
+
+    root.style.scrollBehavior = 'auto';
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+    const raf = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    });
+
+    const timer = window.setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      root.style.scrollBehavior = previousScrollBehavior;
+    }, 120);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+      root.style.scrollBehavior = previousScrollBehavior;
+      if (canControlScrollRestoration && previousScrollRestoration) {
+        window.history.scrollRestoration = previousScrollRestoration;
+      }
+    };
+  }, []);
+}
+
+function usePreloaderScrollLock(enabled) {
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    let frame = 0;
+    let touchStartY = 0;
+
+    const getIntroTop = () => {
+      const intro = document.getElementById('intro');
+      return intro ? intro.offsetTop : 0;
+    };
+
+    const cleanInstallHash = () => {
+      if (window.location.hash === '#installing') {
+        window.history.replaceState(null, '', '#intro');
+      }
+    };
+
+    const scrollToIntro = () => {
+      const introTop = getIntroTop();
+      window.scrollTo({ top: introTop, left: 0, behavior: 'auto' });
+    };
+
+    const keepPastPreloader = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const introTop = getIntroTop();
+        cleanInstallHash();
+
+        if (window.scrollY < introTop - 2) {
+          scrollToIntro();
+        }
+      });
+    };
+
+    const preventPreloaderWheel = (event) => {
+      if (event.deltaY >= 0) return;
+
+      if (window.scrollY <= getIntroTop() + 32) {
+        event.preventDefault();
+        cleanInstallHash();
+        scrollToIntro();
+      }
+    };
+
+    const preventPreloaderKey = (event) => {
+      if (event.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+
+      const blockedKeys = new Set(['Home', 'PageUp', 'ArrowUp', 'Space']);
+      if (!blockedKeys.has(event.code) && !blockedKeys.has(event.key)) return;
+      if (event.code === 'Space' && !event.shiftKey) return;
+
+      if (event.code === 'Home' || event.key === 'Home' || window.scrollY <= getIntroTop() + window.innerHeight * 0.5) {
+        event.preventDefault();
+        cleanInstallHash();
+        scrollToIntro();
+      }
+    };
+
+    const rememberTouchStart = (event) => {
+      touchStartY = event.touches[0]?.clientY ?? 0;
+    };
+
+    const preventPreloaderTouch = (event) => {
+      const currentY = event.touches[0]?.clientY ?? touchStartY;
+      const draggingTowardPreloader = currentY > touchStartY + 4;
+
+      if (draggingTowardPreloader && window.scrollY <= getIntroTop() + 32) {
+        event.preventDefault();
+        cleanInstallHash();
+        scrollToIntro();
+      }
+    };
+
+    keepPastPreloader();
+    window.history.replaceState(null, '', '#intro');
+    window.addEventListener('scroll', keepPastPreloader, { passive: true });
+    window.addEventListener('resize', keepPastPreloader);
+    window.addEventListener('hashchange', keepPastPreloader);
+    window.addEventListener('popstate', keepPastPreloader);
+    window.addEventListener('wheel', preventPreloaderWheel, { passive: false });
+    window.addEventListener('keydown', preventPreloaderKey);
+    window.addEventListener('touchstart', rememberTouchStart, { passive: true });
+    window.addEventListener('touchmove', preventPreloaderTouch, { passive: false });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', keepPastPreloader);
+      window.removeEventListener('resize', keepPastPreloader);
+      window.removeEventListener('hashchange', keepPastPreloader);
+      window.removeEventListener('popstate', keepPastPreloader);
+      window.removeEventListener('wheel', preventPreloaderWheel);
+      window.removeEventListener('keydown', preventPreloaderKey);
+      window.removeEventListener('touchstart', rememberTouchStart);
+      window.removeEventListener('touchmove', preventPreloaderTouch);
+    };
+  }, [enabled]);
 }
 
 function normalizeObject(object, targetHeight = 3.35) {
@@ -307,9 +513,15 @@ function AthoraScene({ modelState }) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
+    renderer.toneMappingExposure = 0.88;
     renderer.setClearColor(0x000000, 0);
     mount.appendChild(renderer.domElement);
+
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const roomEnvironment = new RoomEnvironment();
+    const environmentTexture = pmrem.fromScene(roomEnvironment, 0.04).texture;
+    roomEnvironment.dispose();
+    pmrem.dispose();
 
     const root = new THREE.Group();
     scene.add(root);
@@ -322,6 +534,7 @@ function AthoraScene({ modelState }) {
 
     const sceneVariants = [];
     const assetVariants = { fallback };
+    const animationMixers = new Map();
     let activeVariant = fallback;
 
     const loader = new GLTFLoader();
@@ -337,6 +550,13 @@ function AthoraScene({ modelState }) {
               : child.material.clone();
             const clonedMaterials = Array.isArray(child.material) ? child.material : [child.material];
             clonedMaterials.forEach((material) => {
+              if (/aluminum|aluminium|scuffed/i.test(material.name || '')) {
+                material.envMap = environmentTexture;
+                material.color?.set?.(0xd8dee2);
+                if ('metalness' in material) material.metalness = 0.68;
+                if ('roughness' in material) material.roughness = 0.2;
+                if ('envMapIntensity' in material) material.envMapIntensity = 1.45;
+              }
               material.transparent = material.transparent || material.opacity < 1;
               material.needsUpdate = true;
             });
@@ -347,6 +567,21 @@ function AthoraScene({ modelState }) {
       clone.visible = false;
       modelWrap.add(clone);
       return clone;
+    };
+
+    const bindClipsToScroll = (object, clips = []) => {
+      if (!clips.length) return;
+
+      const mixer = new THREE.AnimationMixer(object);
+      let duration = 0;
+      clips.forEach((clip) => {
+        duration = Math.max(duration, clip.duration || 0);
+        const action = mixer.clipAction(clip);
+        action.reset();
+        action.play();
+      });
+      mixer.setTime(0);
+      animationMixers.set(object, { mixer, duration });
     };
 
     loader.load(
@@ -391,6 +626,7 @@ function AthoraScene({ modelState }) {
         });
         helpers.forEach((child) => child.parent?.remove(child));
         assetVariants.screen1 = prepareClone(clone, 3.35);
+        bindClipsToScroll(assetVariants.screen1, gltf.animations);
       },
       undefined,
       () => {
@@ -398,14 +634,14 @@ function AthoraScene({ modelState }) {
       }
     );
 
-    scene.add(new THREE.AmbientLight(0xffffff, 1.9));
-    const key = new THREE.DirectionalLight(0xffffff, 3.4);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const key = new THREE.DirectionalLight(0xffffff, 2.15);
     key.position.set(3, 5, 4);
     scene.add(key);
-    const cyan = new THREE.PointLight(0x00ecff, 64, 9);
+    const cyan = new THREE.PointLight(0x00ecff, 16, 9);
     cyan.position.set(-3, -1.8, 2.8);
     scene.add(cyan);
-    const blue = new THREE.PointLight(0x0427ff, 36, 8);
+    const blue = new THREE.PointLight(0x0427ff, 10, 8);
     blue.position.set(2.6, -2.2, 3.2);
     scene.add(blue);
 
@@ -429,6 +665,10 @@ function AthoraScene({ modelState }) {
       const target = modelStateRef.current;
 
       const wantedVariant = target.asset ? assetVariants[target.asset] || fallback : sceneVariants[target.scene] || fallback;
+      const boundAnimation = animationMixers.get(wantedVariant);
+      if (boundAnimation) {
+        boundAnimation.mixer.setTime(boundAnimation.duration * clamp(target.clipProgress ?? 0, 0, 1));
+      }
       if (wantedVariant !== activeVariant) {
         if (activeVariant) activeVariant.visible = false;
         wantedVariant.visible = true;
@@ -441,8 +681,13 @@ function AthoraScene({ modelState }) {
       const viewportScale = mount.clientWidth < 620 ? 0.92 : 1;
       const liveScale = target.scale * viewportScale * (1 + Math.sin(elapsed * 1.5) * 0.012);
       modelWrap.scale.setScalar(lerp(modelWrap.scale.x, liveScale, 0.06));
+      modelWrap.rotation.x = lerp(modelWrap.rotation.x, target.pitch ?? 0, 0.05);
       modelWrap.rotation.y = lerp(modelWrap.rotation.y, target.rotate + elapsed * (target.spin ?? 0.26), 0.05);
-      modelWrap.rotation.z = lerp(modelWrap.rotation.z, Math.sin(elapsed * 0.6) * 0.055, 0.05);
+      modelWrap.rotation.z = lerp(
+        modelWrap.rotation.z,
+        (target.tilt ?? 0) + Math.sin(elapsed * 0.6) * (target.floatTilt ?? 0.055),
+        0.05
+      );
 
       modelWrap.traverse((child) => {
         if (child.isMesh && child.material) {
@@ -466,6 +711,7 @@ function AthoraScene({ modelState }) {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
+      environmentTexture.dispose();
       renderer.dispose();
       scene.traverse((child) => {
         if (child.geometry) child.geometry.dispose();
@@ -611,13 +857,29 @@ function FigmaHeroBackground() {
     <div className="figma-hero-bg" aria-hidden="true">
       <div className="figma-hero-bg-canvas">
         <img className="figma-bg-base" src="/figma-hero/background-main.png" alt="" />
-        <img className="figma-bg-berry" src="/figma-hero/berry-right-cutout.png" alt="" />
+        <img className="figma-bg-berry" src="/figma-hero/berry-right.svg" alt="" />
       </div>
     </div>
   );
 }
 
-function Navigation({ activeIndex, showNav }) {
+function FixedHeroSequenceBackground({ visible, berryOpacity }) {
+  const className = [
+    'hero-sequence-bg',
+    visible ? 'hero-sequence-bg-visible' : '',
+    berryOpacity > 0.01 ? 'hero-sequence-bg-with-berry' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <div className={className} style={{ '--hero-berry-opacity': berryOpacity }} aria-hidden="true">
+      <FigmaHeroBackground />
+    </div>
+  );
+}
+
+function Navigation({ activeIndex, showNav, preloaderLocked }) {
   return (
     <header className={showNav ? 'site-nav' : 'site-nav site-nav-hidden'}>
       <div className="mobile-status-bar" aria-hidden="true">
@@ -631,7 +893,7 @@ function Navigation({ activeIndex, showNav }) {
       </div>
       <NavFrameGlass />
       <ChromeDots />
-      <a className="nav-mark" href="#installing" aria-label="ATHORA home">
+      <a className="nav-mark" href={preloaderLocked ? '#intro' : '#installing'} aria-label="ATHORA home">
         <img src="/figma-nav/nav-union.svg" alt="" aria-hidden="true" />
       </a>
       <nav aria-label="Primary navigation">
@@ -711,10 +973,19 @@ function PreloaderTransitionOverlay({ phase }) {
   );
 }
 
-function IntroSection({ section }) {
+function IntroSection({ section, isActive }) {
   return (
-    <section className={`panel intro-panel ${SECTION_THEMES[section.theme].className}`} id={section.id}>
-      <FigmaHeroBackground />
+    <section
+      className={`panel intro-panel ${isActive ? 'intro-berries-active' : ''} ${SECTION_THEMES[section.theme].className}`}
+      id={section.id}
+    >
+      <div className="intro-berry-field" aria-hidden="true">
+        <span className="intro-berry-shadow intro-berry-shadow-main" />
+        <span className="intro-berry-shadow intro-berry-shadow-left" />
+        <img className="intro-berry intro-berry-left" src="/figma-hero/image-3.svg" alt="" />
+        <img className="intro-berry intro-berry-center" src="/figma-hero/berry-center.svg" alt="" />
+      </div>
+      {/*
       <div className="intro-controls" aria-hidden="true">
         <button className="glass-arrow glass-arrow-left" type="button" tabIndex="-1">
           <span />
@@ -723,6 +994,7 @@ function IntroSection({ section }) {
           <span />
         </button>
       </div>
+      */}
       <p className="intro-scroll">{section.subcopy}</p>
     </section>
   );
@@ -730,6 +1002,77 @@ function IntroSection({ section }) {
 
 function SystemsSection({ section }) {
   const isFigmaSystems = Boolean(section.figmaVariant);
+  const isWordStepScroll = Boolean(section.wordStepScroll && section.items.length > 1);
+  const stackRef = useRef(null);
+  const rawWordProgress = usePinnedStackProgress(stackRef, isWordStepScroll ? section.items.length : 1);
+  const activeWordIndex = clamp(Math.round(rawWordProgress), 0, section.items.length - 1);
+  const renderSystemsCopy = (animated = false) => (
+    <div className="systems-copy">
+      <p className="pretitle">{section.pretitle}</p>
+      <div className="systems-list">
+        {section.items.map((item, index) => {
+          const distance = animated ? index - activeWordIndex : index;
+          const trailingDistance = Math.max(distance, 0);
+          const opacity = animated
+            ? distance < -0.08
+              ? clamp(1 + distance * 1.7, 0, 1)
+              : clamp(1 - trailingDistance * 0.41, 0, 1)
+            : undefined;
+          const blur = animated
+            ? distance < 0
+              ? Math.min(Math.abs(distance) * 1.6, 3.2)
+              : Math.min(trailingDistance * 2.2, 4.4)
+            : undefined;
+          const colorAlpha = animated ? clamp(1 - Math.abs(distance) * 0.6, 0.4, 1) : undefined;
+          const isActiveWord = animated && Math.abs(distance) < 0.12;
+
+          return (
+            <h2
+              className={isFigmaSystems ? `systems-word systems-word-${index}` : ''}
+              key={item}
+              style={
+                animated
+                  ? {
+                      opacity,
+                      color: `rgba(255, 255, 255, ${colorAlpha})`,
+                      filter: blur > 0 ? `blur(${blur}px)` : 'none',
+                      textShadow: isActiveWord ? '0 1.366px 35.516px rgba(4, 14, 36, 0.22)' : 'none',
+                      transform: `translate3d(0, ${distance * 1.11}em, 0)`,
+                    }
+                  : undefined
+              }
+            >
+              {item}
+            </h2>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  if (isWordStepScroll) {
+    return (
+      <section
+        className={`panel systems-panel systems-panel-step-scroll systems-panel-figma systems-panel-figma-${section.figmaVariant} ${SECTION_THEMES[section.theme].className}`}
+        id={section.id}
+        ref={stackRef}
+        style={{ '--systems-step-height': `${section.items.length * 100}vh` }}
+      >
+        {section.items.map((item, index) => (
+          <span
+            aria-hidden="true"
+            className="systems-step-snap"
+            key={`systems-step-${item}`}
+            style={{ top: `${index * 100}vh` }}
+          />
+        ))}
+        <div className="systems-step-stage">
+          {renderSystemsCopy(true)}
+          <ScrollDown />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -738,17 +1081,8 @@ function SystemsSection({ section }) {
       } ${SECTION_THEMES[section.theme].className}`}
       id={section.id}
     >
-      <div className="systems-copy">
-        <p className="pretitle">{section.pretitle}</p>
-        <div className="systems-list">
-          {section.items.map((item, index) => (
-            <h2 className={isFigmaSystems ? `systems-word systems-word-${index}` : ''} key={item}>
-              {item}
-            </h2>
-          ))}
-        </div>
-      </div>
-      {isFigmaSystems && (
+      {renderSystemsCopy(false)}
+      {isFigmaSystems && section.figmaCan && (
         <img
           className={`systems-figma-can systems-figma-can-${section.figmaVariant}`}
           src={section.figmaCan}
@@ -789,6 +1123,161 @@ function ClaimSection({ section }) {
         ) : null}
       </h2>
       <ScrollDown />
+    </section>
+  );
+}
+
+function usePinnedStackProgress(sectionRef, itemCount) {
+  const [progress, setProgress] = useState(0);
+  const progressRef = useRef(-1);
+
+  useEffect(() => {
+    if (itemCount <= 1) return undefined;
+
+    let frame = 0;
+
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const section = sectionRef.current;
+        if (!section) return;
+
+        const sectionTop = window.scrollY + section.getBoundingClientRect().top;
+        const scrollRange = Math.max(section.offsetHeight - window.innerHeight, 1);
+        const rawProgress = clamp((window.scrollY - sectionTop) / scrollRange, 0, 1) * (itemCount - 1);
+        const nextProgress = Math.round(rawProgress * 1000) / 1000;
+
+        if (Math.abs(nextProgress - progressRef.current) > 0.002) {
+          progressRef.current = nextProgress;
+          setProgress(nextProgress);
+        }
+      });
+    };
+
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [itemCount, sectionRef]);
+
+  return progress;
+}
+
+function useSmoothedProgress(targetProgress, durationMs = 900, easing = 'easeInOut') {
+  const [progress, setProgress] = useState(targetProgress);
+  const progressRef = useRef(targetProgress);
+  const frameRef = useRef(0);
+
+  useEffect(() => {
+    cancelAnimationFrame(frameRef.current);
+
+    const start = progressRef.current;
+    const delta = targetProgress - start;
+    if (Math.abs(delta) < 0.001) {
+      progressRef.current = targetProgress;
+      setProgress(targetProgress);
+      return undefined;
+    }
+
+    const startedAt = window.performance.now();
+    const duration = Math.max(180, durationMs * Math.min(Math.abs(delta), 1));
+
+    const tick = (now) => {
+      const linearProgress = clamp((now - startedAt) / duration, 0, 1);
+      const easedProgress =
+        easing === 'linear'
+          ? linearProgress
+          : linearProgress < 0.5
+          ? 4 * linearProgress * linearProgress * linearProgress
+          : 1 - Math.pow(-2 * linearProgress + 2, 3) / 2;
+      const nextProgress = start + delta * easedProgress;
+
+      progressRef.current = nextProgress;
+      setProgress(nextProgress);
+
+      if (linearProgress < 1) {
+        frameRef.current = window.requestAnimationFrame(tick);
+      }
+    };
+
+    frameRef.current = window.requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(frameRef.current);
+    };
+  }, [durationMs, easing, targetProgress]);
+
+  return progress;
+}
+
+function ClaimStackSection({ section }) {
+  const stackRef = useRef(null);
+  const claims = section.claims || [];
+  const progress = usePinnedStackProgress(stackRef, claims.length);
+
+  return (
+    <section
+      className={`panel claim-stack-panel figma-claim-panel figma-claim-stack ${SECTION_THEMES[section.theme].className}`}
+      id={section.id}
+      ref={stackRef}
+      style={{ '--claim-count': claims.length, '--claim-stack-height': `${claims.length * 100}vh` }}
+    >
+      {claims.map((claim, index) => (
+        <span
+          aria-hidden="true"
+          className="claim-stack-snap"
+          id={index === 0 ? undefined : claim.id}
+          key={`snap-${claim.id}`}
+          style={{ top: `${index * 100}vh` }}
+        />
+      ))}
+      <div className="claim-stack-stage">
+        <div className="claim-stack-copy">
+          {claims.map((claim, index) => {
+            const desktopLines = claim.headlineLines || [claim.headline];
+            const mobileLines = claim.mobileHeadlineLines || desktopLines;
+            const hasMobileLines = Boolean(claim.mobileHeadlineLines);
+            const distance = index - progress;
+            const absDistance = Math.abs(distance);
+            const opacity = clamp(1 - absDistance * 1.55, 0, 1);
+            const translateY = distance * 112;
+            const scale = 1 - Math.min(absDistance * 0.035, 0.06);
+            const blur = Math.min(absDistance * 7, 9);
+
+            return (
+              <h2
+                aria-hidden={opacity < 0.05 ? true : undefined}
+                className={`claim-stack-heading ${hasMobileLines ? 'has-mobile-lines' : ''}`}
+                key={claim.id}
+                style={{
+                  opacity,
+                  filter: `blur(${blur}px)`,
+                  transform: `translate3d(-50%, calc(-50% + ${translateY}vh), 0) scale(${scale})`,
+                }}
+              >
+                <span className="claim-line-set claim-line-set-desktop">
+                  {desktopLines.map((line) => (
+                    <span key={`desktop-${claim.id}-${line}`}>{line}</span>
+                  ))}
+                </span>
+                {hasMobileLines ? (
+                  <span className="claim-line-set claim-line-set-mobile" aria-hidden="true">
+                    {mobileLines.map((line) => (
+                      <span key={`mobile-${claim.id}-${line}`}>{line}</span>
+                    ))}
+                  </span>
+                ) : null}
+              </h2>
+            );
+          })}
+        </div>
+        <ScrollDown />
+      </div>
     </section>
   );
 }
@@ -863,6 +1352,103 @@ function PriceSection({ section }) {
   );
 }
 
+function PriceStackSection({ section }) {
+  const stackRef = useRef(null);
+  const prices = section.prices || [];
+  const progress = usePinnedStackProgress(stackRef, prices.length);
+  const animatedProgress = useSmoothedProgress(progress, 1250, 'linear');
+  const firstPrice = prices[0];
+  const finalPrice = prices[prices.length - 1];
+  const valueSequence = section.valueSequence || prices.map((price) => price.value);
+  const valueProgress = animatedProgress * Math.max(valueSequence.length - 1, 0);
+  const labelProgress = animatedProgress;
+
+  return (
+    <section
+      className={`panel price-panel figma-price-panel figma-price-stack ${SECTION_THEMES[section.theme].className}`}
+      id={section.id}
+      ref={stackRef}
+      style={{ '--price-stack-height': `${prices.length * 100}vh` }}
+    >
+      {prices.map((price, index) => (
+        <span
+          aria-hidden="true"
+          className="price-stack-snap"
+          id={index === 0 ? undefined : price.id}
+          key={`price-snap-${price.id}`}
+          style={{ top: `${index * 100}vh` }}
+        />
+      ))}
+      <div className="price-stack-stage">
+        <div className="price-stack-copy">
+          <div className="price-stack-pretitles" aria-hidden="true">
+            {firstPrice?.pretitle ? (
+              <p
+                className="price-stack-pretitle"
+                style={{
+                  opacity: 1 - labelProgress,
+                  filter: `blur(${Math.min(labelProgress * 6, 8)}px)`,
+                  transform: `translate3d(-50%, calc(-50% + ${labelProgress * -48}px), 0)`,
+                }}
+              >
+                {firstPrice.pretitle}
+              </p>
+            ) : null}
+            {finalPrice?.pretitle ? (
+              <p
+                className="price-stack-pretitle"
+                style={{
+                  opacity: labelProgress,
+                  filter: `blur(${Math.min((1 - labelProgress) * 6, 8)}px)`,
+                  transform: `translate3d(-50%, calc(-50% + ${(1 - labelProgress) * 48}px), 0)`,
+                }}
+              >
+                {finalPrice.pretitle}
+              </p>
+            ) : null}
+          </div>
+          <h2
+            className="price-stack-heading"
+            aria-label={`$${valueSequence[0] || firstPrice?.value || ''} to $${
+              valueSequence[valueSequence.length - 1] || finalPrice?.value || ''
+            } per day`}
+          >
+            <span className="price-currency" aria-hidden="true">
+              $
+            </span>
+            <span className="price-value-window" aria-hidden="true">
+              {valueSequence.map((value, index) => {
+                const distance = index - valueProgress;
+                const absDistance = Math.abs(distance);
+                const opacity = clamp(1 - absDistance * 1.6, 0, 1);
+
+                return (
+                  <span
+                    className="price-value-number"
+                    key={`price-value-${value}-${index}`}
+                    style={{
+                      opacity,
+                      filter: `blur(${Math.min(absDistance * 6, 8)}px)`,
+                      transform: `translate3d(0, ${distance * 1.18}em, 0)`,
+                    }}
+                  >
+                    {value}
+                  </span>
+                );
+              })}
+            </span>
+            <span className="price-suffix" aria-hidden="true">
+              / DAY
+              {section.footnote && <sup>{section.footnote}</sup>}
+            </span>
+          </h2>
+        </div>
+        <ScrollDown />
+      </div>
+    </section>
+  );
+}
+
 function BenefitsSection({ section }) {
   return (
     <section className={`panel benefits-panel figma-detail-panel figma-benefits-panel ${SECTION_THEMES[section.theme].className}`} id={section.id}>
@@ -927,22 +1513,26 @@ function ScrollDown() {
   return <p className="scroll-down">Scroll down</p>;
 }
 
-function SectionRenderer({ section, onIntroReveal }) {
+function SectionRenderer({ section, onIntroReveal, isActive }) {
   switch (section.type) {
     case 'install':
       return <InstallSection section={section} onIntroReveal={onIntroReveal} />;
     case 'intro':
-      return <IntroSection section={section} />;
+      return <IntroSection section={section} isActive={isActive} />;
     case 'systems':
       return <SystemsSection section={section} />;
     case 'claim':
       return <ClaimSection section={section} />;
+    case 'claim-stack':
+      return <ClaimStackSection section={section} />;
     case 'lineup':
       return <ProductLineupSection section={section} />;
     case 'open':
       return <OpenSection section={section} />;
     case 'price':
       return <PriceSection section={section} />;
+    case 'price-stack':
+      return <PriceStackSection section={section} />;
     case 'benefits':
       return <BenefitsSection section={section} />;
     case 'split-claim':
@@ -955,9 +1545,13 @@ function SectionRenderer({ section, onIntroReveal }) {
 }
 
 function App() {
-  const { activeIndex, modelState, showNav } = useScrollModelState();
+  useStartAtPreloaderOnPageLoad();
+
+  const { activeIndex, sectionProgress, modelState, showNav } = useScrollModelState();
   const activeSection = sections[activeIndex];
   const activeTheme = useMemo(() => SECTION_THEMES[sections[activeIndex]?.theme || 'blue'], [activeIndex]);
+  const heroBerryOpacity = activeSection?.id === 'intro' ? 1 - smoothstep(0.14, 0.58, sectionProgress) : 0;
+  const [preloaderLocked, setPreloaderLocked] = useState(false);
   const [introRevealPhase, setIntroRevealPhase] = useState('idle');
   const introRevealPhaseRef = useRef('idle');
   const introRevealTimersRef = useRef([]);
@@ -974,6 +1568,8 @@ function App() {
       restoreScrollStylesRef.current();
     };
   }, []);
+
+  usePreloaderScrollLock(preloaderLocked);
 
   const startIntroReveal = useCallback(() => {
     if (introRevealPhaseRef.current !== 'idle') return;
@@ -999,6 +1595,7 @@ function App() {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) {
       window.scrollTo(0, intro.offsetTop);
+      setPreloaderLocked(true);
       restoreScrollStylesRef.current();
       setIntroRevealPhase('done');
       return;
@@ -1015,6 +1612,7 @@ function App() {
         }, INTRO_REVEAL_PREP_MS);
 
         const doneTimer = window.setTimeout(() => {
+          setPreloaderLocked(true);
           restoreScrollStylesRef.current();
           setIntroRevealPhase('done');
         }, INTRO_REVEAL_PREP_MS + INTRO_REVEAL_DURATION_MS + 80);
@@ -1033,12 +1631,18 @@ function App() {
         '--active-glow': activeTheme.glow,
       }}
     >
+      <FixedHeroSequenceBackground visible={activeIndex > 0 && activeIndex <= 2} berryOpacity={heroBerryOpacity} />
       <AthoraScene modelState={modelState} />
-      <Navigation activeIndex={activeIndex} showNav={showNav} />
+      <Navigation activeIndex={activeIndex} showNav={showNav} preloaderLocked={preloaderLocked} />
       <PreloaderTransitionOverlay phase={introRevealPhase} />
       <main>
-        {sections.map((section) => (
-          <SectionRenderer section={section} key={section.id} onIntroReveal={startIntroReveal} />
+        {sections.map((section, index) => (
+          <SectionRenderer
+            section={section}
+            key={section.id}
+            onIntroReveal={startIntroReveal}
+            isActive={activeIndex === index}
+          />
         ))}
       </main>
     </div>

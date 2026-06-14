@@ -74,8 +74,22 @@ a {
 .scene {
   position: fixed;
   inset: 0;
-  z-index: 2;
+  z-index: 4;
   pointer-events: none;
+}
+
+.hero-sequence-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 360ms ease;
+}
+
+.hero-sequence-bg-visible {
+  opacity: 1;
 }
 
 .scene canvas {
@@ -576,7 +590,7 @@ main {
 
 .intro-panel {
   padding: 0;
-  background: linear-gradient(to top, #00ffff 0%, #0019ff 50%, #0019ff 100%);
+  background: transparent;
 }
 
 .intro-panel::before,
@@ -620,11 +634,220 @@ main {
 }
 
 .figma-bg-berry {
-  left: 72.569%;
-  top: 68.5%;
-  width: 27.431%;
-  height: 31.5%;
+  left: 81.64%;
+  top: 71.75%;
+  width: 22.36%;
+  height: 28.25%;
   object-fit: fill;
+  opacity: var(--hero-berry-opacity, 0);
+  transform: translate3d(28px, 22px, 0) scale(0.97);
+  transform-origin: 66% 62%;
+  transition:
+    opacity 120ms linear,
+    transform 180ms ease-out;
+  transition-delay: 0ms;
+  will-change: opacity, transform;
+}
+
+.hero-sequence-bg-visible.hero-sequence-bg-with-berry .figma-bg-berry {
+  opacity: var(--hero-berry-opacity, 1);
+  transform: translate3d(0, 0, 0) scale(1);
+  transition:
+    opacity 120ms linear,
+    transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: 0ms;
+  animation: intro-bg-berry-drift 5.6s ease-in-out 1.2s infinite alternate;
+}
+
+.intro-berry-field {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  width: max(100vw, 180vh);
+  min-height: 100%;
+  aspect-ratio: 1440 / 800;
+  overflow: visible;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transform-origin: center;
+}
+
+.intro-berry {
+  position: absolute;
+  display: block;
+  max-width: none;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  will-change: opacity, transform;
+}
+
+.intro-berry-shadow {
+  position: absolute;
+  display: block;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, rgba(0, 24, 120, 0.58) 0%, rgba(0, 72, 188, 0.42) 34%, rgba(0, 230, 255, 0.24) 56%, rgba(0, 230, 255, 0) 76%);
+  filter: blur(10px);
+  transform: translate3d(0, 18px, 0) scale(0.88);
+  transform-origin: center;
+  will-change: opacity, transform;
+}
+
+.intro-berry-shadow-main {
+  left: 38.2%;
+  top: 77.4%;
+  width: 27.8%;
+  height: 5.1%;
+}
+
+.intro-berry-shadow-left {
+  left: 36.8%;
+  top: 74.7%;
+  width: 16.7%;
+  height: 3.8%;
+  opacity: 0;
+  filter: blur(9px);
+}
+
+.intro-berry-left {
+  left: 25.15%;
+  top: 39.8%;
+  width: 35.83%;
+  transform: translate3d(-28px, 18px, 0) scale(0.9) rotate(-5deg);
+  transform-origin: 58% 42%;
+}
+
+.intro-berry-center {
+  left: 51.06%;
+  top: 60.75%;
+  width: 10.83%;
+  transform: translate3d(26px, 14px, 0) scale(0.88);
+  transform-origin: center;
+}
+
+.intro-berries-active .intro-berry-shadow-main {
+  animation:
+    intro-berry-shadow-enter 980ms cubic-bezier(0.16, 1, 0.3, 1) 0.52s forwards,
+    intro-berry-shadow-drift 5.2s ease-in-out 1.5s infinite alternate;
+}
+
+.intro-berries-active .intro-berry-shadow-left {
+  animation:
+    intro-berry-shadow-left-enter 860ms cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards,
+    intro-berry-shadow-left-drift 4.7s ease-in-out 1.36s infinite alternate;
+}
+
+.intro-berries-active .intro-berry-left {
+  animation:
+    intro-berry-left-enter 900ms cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards,
+    intro-berry-left-drift 4.8s ease-in-out 1.4s infinite alternate;
+}
+
+.intro-berries-active .intro-berry-center {
+  animation:
+    intro-berry-center-enter 960ms cubic-bezier(0.16, 1, 0.3, 1) 0.58s forwards,
+    intro-berry-center-drift 5.2s ease-in-out 1.54s infinite alternate;
+}
+
+@keyframes intro-berry-shadow-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.88);
+  }
+  100% {
+    opacity: 0.74;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes intro-berry-shadow-left-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(-20px, 14px, 0) scale(0.85);
+  }
+  100% {
+    opacity: 0.44;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes intro-berry-left-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(-28px, 18px, 0) scale(0.9) rotate(-5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes intro-berry-center-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(26px, 14px, 0) scale(0.88);
+  }
+  100% {
+    opacity: 0.94;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes intro-berry-left-drift {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(-7px, -8px, 0) scale(1.015) rotate(-1.8deg);
+  }
+}
+
+@keyframes intro-berry-center-drift {
+  0% {
+    opacity: 0.94;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0.98;
+    transform: translate3d(8px, -7px, 0) scale(1.04);
+  }
+}
+
+@keyframes intro-berry-shadow-drift {
+  0% {
+    opacity: 0.7;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0.78;
+    transform: translate3d(-4px, -2px, 0) scale(1.035);
+  }
+}
+
+@keyframes intro-berry-shadow-left-drift {
+  0% {
+    opacity: 0.42;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0.48;
+    transform: translate3d(-7px, -4px, 0) scale(1.025);
+  }
+}
+
+@keyframes intro-bg-berry-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(-10px, -8px, 0) scale(1.02);
+  }
 }
 
 .intro-scroll,
@@ -737,8 +960,43 @@ main {
   background: linear-gradient(to top, #00ffff 0%, #0019ff 50%, #0019ff 100%);
 }
 
+.systems-panel-figma-hydration {
+  background: transparent;
+}
+
+.systems-panel-step-scroll {
+  height: var(--systems-step-height, 400vh);
+  min-height: var(--systems-step-height, 400vh);
+  overflow: visible;
+}
+
+.systems-step-snap {
+  position: absolute;
+  display: block;
+  left: 0;
+  z-index: -1;
+  width: 1px;
+  height: 100vh;
+  pointer-events: none;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.systems-step-stage {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
 .systems-panel-figma::before {
   background: url("/figma-hero/background-main.png") center / cover no-repeat;
+}
+
+.systems-panel-figma-hydration::before {
+  display: none;
 }
 
 .systems-panel-figma-energy,
@@ -823,6 +1081,10 @@ main {
   overflow: hidden;
 }
 
+.systems-panel-step-scroll .systems-list {
+  position: relative;
+}
+
 .systems-list h2,
 .claim-panel h2,
 .price-panel h2,
@@ -850,6 +1112,21 @@ main {
   color: rgba(255, 255, 255, 0.4);
   text-shadow: none;
   white-space: nowrap;
+}
+
+.systems-panel-step-scroll .systems-list h2 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  backface-visibility: hidden;
+  contain: paint;
+  transition:
+    transform 640ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 520ms ease,
+    color 520ms ease,
+    text-shadow 520ms ease;
+  will-change: transform, opacity;
 }
 
 .systems-panel-figma .systems-list .systems-word-0 {
@@ -996,9 +1273,11 @@ main {
 }
 
 .figma-claim-simplicity h2 {
-  width: min(1160px, calc(100% - 96px));
-  font-size: clamp(58px, 7.2vw, 104px);
-  line-height: 0.98;
+  top: calc(50% + 20px);
+  width: min(1152px, calc(100% - 288px));
+  font-size: clamp(58px, 4.65vw, 67px);
+  line-height: 0.99;
+  letter-spacing: 0.67px;
 }
 
 .figma-claim-panel .scroll-down {
@@ -1011,6 +1290,110 @@ main {
   text-align: center;
   text-shadow: none;
   white-space: nowrap;
+}
+
+.figma-claim-stack {
+  height: var(--claim-stack-height, 300vh);
+  min-height: var(--claim-stack-height, 300vh);
+  overflow: visible;
+  background: #0019ff;
+}
+
+.figma-claim-stack::before,
+.figma-claim-stack::after {
+  display: none;
+}
+
+.claim-stack-snap {
+  position: absolute;
+  display: block;
+  left: 0;
+  z-index: -1;
+  width: 1px;
+  height: 100vh;
+  pointer-events: none;
+  scroll-snap-align: start;
+}
+
+.claim-stack-stage {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.claim-stack-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(132deg, transparent 0 25.7%, rgba(255, 255, 255, 0.052) 25.7% 33.8%, transparent 33.8% 100%),
+    linear-gradient(132deg, transparent 0 49.8%, rgba(255, 255, 255, 0.052) 49.8% 57.4%, transparent 57.4% 100%),
+    linear-gradient(132deg, transparent 0 75%, rgba(255, 255, 255, 0.036) 75% 84%, transparent 84% 100%),
+    radial-gradient(ellipse 40% 35% at 50% 62%, rgba(0, 255, 255, 0.22), transparent 64%),
+    linear-gradient(to top, #00ffff 0%, #0019ff 50%, #0019ff 100%);
+}
+
+.claim-stack-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 18% 84%, rgba(255, 255, 255, 0.08)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.032) 0 1px, transparent 1px 112px);
+  opacity: 0.52;
+  pointer-events: none;
+}
+
+.claim-stack-copy {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.figma-claim-stack .claim-stack-heading {
+  position: absolute;
+  left: calc(50% - 0.5px);
+  top: calc(50% + 8px);
+  z-index: 4;
+  display: flex;
+  width: 677px;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 77.162px;
+  font-weight: 400;
+  line-height: 1.01;
+  letter-spacing: 0.772px;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 1.366px 35.516px rgba(4, 14, 36, 0.22);
+  white-space: nowrap;
+  will-change: transform, opacity, filter;
+}
+
+.figma-claim-stack .claim-stack-heading span {
+  display: block;
+}
+
+.figma-claim-stack .claim-stack-heading .claim-line-set {
+  display: contents;
+}
+
+.figma-claim-stack .claim-stack-heading .claim-line-set-mobile {
+  display: none;
+}
+
+.figma-claim-stack .scroll-down {
+  position: absolute;
+  z-index: 5;
 }
 
 .scroll-down {
@@ -1262,6 +1645,152 @@ main {
   text-align: center;
   text-shadow: none;
   white-space: nowrap;
+}
+
+.figma-price-stack {
+  height: var(--price-stack-height, 200vh);
+  min-height: var(--price-stack-height, 200vh);
+  overflow: visible;
+  background: #0019ff;
+}
+
+.figma-price-stack::before,
+.figma-price-stack::after {
+  display: none;
+}
+
+.price-stack-snap {
+  position: absolute;
+  display: block;
+  left: 0;
+  z-index: -1;
+  width: 1px;
+  height: 100vh;
+  pointer-events: none;
+  scroll-snap-align: start;
+}
+
+.price-stack-stage {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.price-stack-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(132deg, transparent 0 25.7%, rgba(255, 255, 255, 0.052) 25.7% 33.8%, transparent 33.8% 100%),
+    linear-gradient(132deg, transparent 0 49.8%, rgba(255, 255, 255, 0.052) 49.8% 57.4%, transparent 57.4% 100%),
+    linear-gradient(132deg, transparent 0 75%, rgba(255, 255, 255, 0.036) 75% 84%, transparent 84% 100%),
+    radial-gradient(ellipse 40% 35% at 50% 62%, rgba(0, 255, 255, 0.22), transparent 64%),
+    linear-gradient(to top, #00ffff 0%, #0019ff 50%, #0019ff 100%);
+}
+
+.price-stack-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 18% 84%, rgba(255, 255, 255, 0.08)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.032) 0 1px, transparent 1px 112px);
+  opacity: 0.52;
+  pointer-events: none;
+}
+
+.price-stack-copy {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.price-stack-pretitle {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 91px);
+  z-index: 4;
+  margin: 0;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 1.9px;
+  text-align: center;
+  text-shadow: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  will-change: transform, opacity, filter;
+}
+
+.figma-price-stack .price-stack-heading {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 8px);
+  z-index: 4;
+  display: flex;
+  width: max-content;
+  max-width: calc(100% - 120px);
+  transform: translate(-50%, -50%);
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.18em;
+  margin: 0;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 78px;
+  font-weight: 400;
+  line-height: 1.01;
+  letter-spacing: 0.78px;
+  text-align: center;
+  text-shadow: 0 1.366px 35.516px rgba(4, 14, 36, 0.22);
+  white-space: nowrap;
+}
+
+.price-value-window {
+  position: relative;
+  display: inline-block;
+  width: 2.08em;
+  height: 1.03em;
+  overflow: hidden;
+  text-align: left;
+  transform: translateY(0.24em);
+  vertical-align: baseline;
+}
+
+.price-value-number {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  width: 100%;
+  will-change: transform, opacity, filter;
+}
+
+.price-currency,
+.price-suffix {
+  position: relative;
+  display: inline-block;
+}
+
+.figma-price-stack .price-suffix sup {
+  position: absolute;
+  top: -0.18em;
+  right: -0.52em;
+  font-size: 0.42em;
+  line-height: 1;
+}
+
+.figma-price-stack .scroll-down {
+  position: absolute;
+  z-index: 5;
 }
 
 .side-numbers {
@@ -2065,6 +2594,35 @@ main {
     letter-spacing: 1.2px;
   }
 
+  .figma-claim-stack {
+    height: var(--claim-stack-height, 300vh);
+    min-height: var(--claim-stack-height, 300vh);
+  }
+
+  .figma-claim-stack .claim-stack-heading {
+    left: 50%;
+    top: calc(50% + 1px);
+    width: calc(100% - 32px);
+    font-size: clamp(32px, 8.85vw, 35.6px);
+    line-height: 1.04;
+    letter-spacing: 0.42px;
+  }
+
+  .figma-claim-stack .claim-stack-heading.has-mobile-lines .claim-line-set-desktop {
+    display: none;
+  }
+
+  .figma-claim-stack .claim-stack-heading.has-mobile-lines .claim-line-set-mobile {
+    display: contents;
+  }
+
+  .figma-claim-stack .scroll-down {
+    bottom: 56px;
+    width: 150px;
+    font-size: 12px;
+    letter-spacing: 1.2px;
+  }
+
   .figma-price-panel {
     display: block;
     padding: 0;
@@ -2095,6 +2653,47 @@ main {
   }
 
   .figma-price-panel .scroll-down {
+    bottom: 56px;
+    width: 150px;
+    font-size: 12px;
+    letter-spacing: 1.2px;
+  }
+
+  .figma-price-stack {
+    height: var(--price-stack-height, 200vh);
+    min-height: var(--price-stack-height, 200vh);
+  }
+
+  .price-stack-pretitle {
+    top: calc(50% - 64px);
+    width: calc(100% - 42px);
+    font-size: 12px;
+    letter-spacing: 1.2px;
+  }
+
+  .figma-price-stack .price-stack-heading {
+    left: 50%;
+    top: calc(50% + 4px);
+    width: max-content;
+    max-width: calc(100% - 34px);
+    gap: 0.14em;
+    font-size: clamp(36px, 10vw, 40px);
+    line-height: 1.04;
+    letter-spacing: 0.42px;
+  }
+
+  .price-value-window {
+    width: 2.04em;
+    height: 1.06em;
+  }
+
+  .figma-price-stack .price-suffix sup {
+    top: -0.2em;
+    right: -0.48em;
+    font-size: 0.4em;
+  }
+
+  .figma-price-stack .scroll-down {
     bottom: 56px;
     width: 150px;
     font-size: 12px;
