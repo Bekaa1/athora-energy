@@ -100,6 +100,42 @@ a {
   opacity: 1;
 }
 
+.systems-fixed-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  opacity: 0;
+  isolation: isolate;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.systems-fixed-bg-visible {
+  opacity: 1;
+}
+
+.systems-fixed-bg::before,
+.systems-fixed-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.systems-fixed-bg::before {
+  z-index: 0;
+  background: url("/figma-hero/background-main.png") center / cover no-repeat;
+}
+
+.systems-fixed-bg::after {
+  z-index: 1;
+  background:
+    radial-gradient(circle at 60% 46%, color-mix(in srgb, var(--active-glow, #7bf9ff) 18%, transparent), transparent 18rem),
+    linear-gradient(to top, var(--active-secondary, #03e5f0) 0%, var(--active-primary, #0627ff) 50%, var(--active-primary, #0627ff) 100%);
+  opacity: var(--systems-tint-opacity, 0);
+}
+
 .scene canvas {
   display: block;
   width: 100%;
@@ -987,7 +1023,7 @@ main {
 .systems-panel-figma {
   display: block;
   padding: 0;
-  background: linear-gradient(to top, #00ffff 0%, #0019ff 50%, #0019ff 100%);
+  background: transparent;
 }
 
 .systems-panel-figma-hydration {
@@ -1031,7 +1067,7 @@ main {
 
 .systems-panel-figma-energy,
 .systems-panel-figma-vitamins {
-  background: linear-gradient(to top, #fbff00 0%, var(--figma-system-top) 50%, var(--figma-system-top) 100%);
+  background: transparent;
 }
 
 .systems-panel-figma-energy {
@@ -1056,6 +1092,13 @@ main {
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 18% 84%, rgba(255, 255, 255, 0.08)),
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.032) 0 1px, transparent 1px 112px);
   opacity: 0.52;
+}
+
+.systems-panel-figma::before,
+.systems-panel-figma::after,
+.systems-panel-figma-energy::before,
+.systems-panel-figma-vitamins::before {
+  display: none;
 }
 
 .systems-copy {

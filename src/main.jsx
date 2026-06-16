@@ -70,9 +70,83 @@ const sections = [
     theme: 'blue',
     figmaVariant: 'hydration',
     wordStepScroll: true,
+    systemsSequence: [
+      {
+        theme: 'blue',
+        modelState: {
+          x: 1.34,
+          y: -0.92,
+          z: 0,
+          scale: 1.38,
+          rotate: -0.64,
+          tilt: -0.42,
+          pitch: -0.4,
+          scene: 3,
+          opacity: 1,
+          asset: 'screen2Blue',
+          clipProgress: 0,
+          spin: 0,
+          floatTilt: 0.01,
+        },
+      },
+      {
+        theme: 'orange',
+        modelState: {
+          x: 1.94,
+          y: -0.92,
+          z: 0,
+          scale: 1.38,
+          rotate: -0.64,
+          tilt: -0.42,
+          pitch: -0.4,
+          scene: 3,
+          opacity: 1,
+          asset: 'screen2Orange',
+          clipProgress: 0,
+          spin: 0,
+          floatTilt: 0.01,
+        },
+      },
+      {
+        theme: 'green',
+        modelState: {
+          x: 1.34,
+          y: -0.92,
+          z: 0,
+          scale: 1.38,
+          rotate: -0.64,
+          tilt: -0.42,
+          pitch: -0.4,
+          scene: 3,
+          opacity: 1,
+          asset: 'screen2Green',
+          clipProgress: 0,
+          spin: 0,
+          floatTilt: 0.01,
+        },
+      },
+      {
+        theme: 'green',
+        modelState: {
+          x: 1.34,
+          y: -0.92,
+          z: 0,
+          scale: 1.38,
+          rotate: -0.64,
+          tilt: -0.42,
+          pitch: -0.4,
+          scene: 3,
+          opacity: 1,
+          asset: 'screen2Green',
+          clipProgress: 0,
+          spin: 0,
+          floatTilt: 0.01,
+        },
+      },
+    ],
     modelTransitionStart: 0.82,
     modelState: {
-      x: 1.94,
+      x: 1.34,
       y: -0.92,
       z: 0,
       scale: 1.38,
@@ -82,52 +156,6 @@ const sections = [
       scene: 3,
       opacity: 1,
       asset: 'screen2Blue',
-      clipProgress: 0,
-      spin: 0,
-      floatTilt: 0.01,
-    },
-  },
-  {
-    id: 'energy',
-    type: 'systems',
-    pretitle: 'every day PEOPLE manage',
-    items: ['Energy', 'Vitamins', 'Immunity'],
-    theme: 'orange',
-    figmaVariant: 'energy',
-    modelState: {
-      x: 1.34,
-      y: -0.92,
-      z: 0,
-      scale: 1.38,
-      rotate: -0.64,
-      tilt: -0.42,
-      pitch: -0.4,
-      scene: 3,
-      opacity: 1,
-      asset: 'screen2Orange',
-      clipProgress: 0,
-      spin: 0,
-      floatTilt: 0.01,
-    },
-  },
-  {
-    id: 'vitamins',
-    type: 'systems',
-    pretitle: 'every day PEOPLE manage',
-    items: ['Vitamins', 'Immunity'],
-    theme: 'green',
-    figmaVariant: 'vitamins',
-    modelState: {
-      x: 1.34,
-      y: -0.92,
-      z: 0,
-      scale: 1.38,
-      rotate: -0.64,
-      tilt: -0.42,
-      pitch: -0.4,
-      scene: 3,
-      opacity: 1,
-      asset: 'screen2Green',
       clipProgress: 0,
       spin: 0,
       floatTilt: 0.01,
@@ -380,6 +408,62 @@ function lerp(start, end, t) {
   return start + (end - start) * t;
 }
 
+function hexToRgb(hex) {
+  const normalized = hex.replace('#', '');
+  const value = Number.parseInt(normalized, 16);
+
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255,
+  };
+}
+
+function mixHexColor(from, to, t) {
+  const start = hexToRgb(from);
+  const end = hexToRgb(to);
+  const r = Math.round(lerp(start.r, end.r, t));
+  const g = Math.round(lerp(start.g, end.g, t));
+  const b = Math.round(lerp(start.b, end.b, t));
+
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function mixTheme(from, to, t) {
+  return {
+    className: from.className,
+    primary: mixHexColor(from.primary, to.primary, t),
+    secondary: mixHexColor(from.secondary, to.secondary, t),
+    glow: mixHexColor(from.glow, to.glow, t),
+  };
+}
+
+function getSystemsSequenceProgress(section, sectionProgress) {
+  const sequence = section?.systemsSequence || [];
+  if (sequence.length < 2) {
+    return {
+      sequence,
+      progress: 0,
+      fromIndex: 0,
+      toIndex: 0,
+      stepProgress: 0,
+    };
+  }
+
+  const maxProgress = sequence.length - 1;
+  const progress = clamp(sectionProgress * maxProgress, 0, maxProgress);
+  const fromIndex = Math.min(Math.floor(progress), sequence.length - 2);
+  const toIndex = Math.min(fromIndex + 1, sequence.length - 1);
+
+  return {
+    sequence,
+    progress,
+    fromIndex,
+    toIndex,
+    stepProgress: progress - fromIndex,
+  };
+}
+
 function interpolateState(a, b, t) {
   return {
     x: lerp(a.x, b.x, t),
@@ -453,8 +537,11 @@ function useScrollModelState() {
         const currentMetric = metrics[activeIndex];
         const nextMetric = metrics[Math.min(activeIndex + 1, metrics.length - 1)];
         const sectionEnd = nextMetric?.top > currentMetric.top ? nextMetric.top : currentMetric.top + currentMetric.height;
-        const sectionProgress = clamp((scrollY - currentMetric.top) / Math.max(sectionEnd - currentMetric.top, 1), 0, 1);
         const currentSection = sections[activeIndex];
+        const rawSectionProgress = clamp((scrollY - currentMetric.top) / Math.max(sectionEnd - currentMetric.top, 1), 0, 1);
+        const sectionProgress = currentSection.systemsSequence?.length
+          ? clamp((scrollY - currentMetric.top) / Math.max(currentMetric.height - sectionHeight, 1), 0, 1)
+          : rawSectionProgress;
         const current = currentSection.modelState;
         const next = sections[Math.min(activeIndex + 1, sections.length - 1)].modelState;
         const modelTransitionStart = currentSection.modelTransitionStart ?? 0;
@@ -466,6 +553,15 @@ function useScrollModelState() {
         const showNav = scrollY >= sectionHeight * 0.72 || window.location.hash === '#intro';
 
         let interpolatedModelState = interpolateState(current, next, modelProgress);
+        if (currentSection.systemsSequence?.length) {
+          const sequenceProgress = getSystemsSequenceProgress(currentSection, sectionProgress);
+          const from = sequenceProgress.sequence[sequenceProgress.fromIndex]?.modelState || current;
+          const to = sequenceProgress.sequence[sequenceProgress.toIndex]?.modelState || from;
+          const sequenceModelProgress = smoothstep(0, 1, sequenceProgress.stepProgress);
+
+          interpolatedModelState = interpolateState(from, to, sequenceModelProgress);
+        }
+
         if (currentSection.flavorScroll) {
           const itemCount = currentSection.items?.length || 1;
           const flavorConfig = currentSection.flavorScroll;
@@ -680,7 +776,7 @@ function AthoraScene({ modelState, hidden = false }) {
     camera.position.set(0, 0.1, 8);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.25;
@@ -888,7 +984,7 @@ function AthoraScene({ modelState, hidden = false }) {
       }
     );
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.25));
     const key = new THREE.DirectionalLight(0xffffff, 2.45);
     key.position.set(3.4, 4.8, 4.6);
     scene.add(key);
@@ -1174,6 +1270,10 @@ function FixedHeroSequenceBackground({ visible, berryOpacity }) {
   );
 }
 
+function FixedSystemsBackground({ visible }) {
+  return <div className={`systems-fixed-bg ${visible ? 'systems-fixed-bg-visible' : ''}`} aria-hidden="true" />;
+}
+
 function Navigation({ activeIndex = 0, showNav, preloaderLocked, legal = false }) {
   const homeHref = legal ? '/' : preloaderLocked ? '#intro' : '#installing';
   const productHref = legal ? '/#all-systems' : '#all-systems';
@@ -1326,8 +1426,9 @@ function IntroSection({ section, isActive }) {
 function SystemsSection({ section }) {
   const isFigmaSystems = Boolean(section.figmaVariant);
   const isWordStepScroll = Boolean(section.wordStepScroll && section.items.length > 1);
+  const wordStepCount = clamp(section.wordStepCount || section.items.length, 1, section.items.length);
   const stackRef = useRef(null);
-  const rawWordProgress = usePinnedStackProgress(stackRef, isWordStepScroll ? section.items.length : 1);
+  const rawWordProgress = usePinnedStackProgress(stackRef, isWordStepScroll ? wordStepCount : 1);
   const activeWordIndex = clamp(Math.round(rawWordProgress), 0, section.items.length - 1);
   const renderSystemsCopy = (animated = false) => (
     <div className="systems-copy">
@@ -1379,9 +1480,9 @@ function SystemsSection({ section }) {
         className={`panel systems-panel systems-panel-step-scroll systems-panel-figma systems-panel-figma-${section.figmaVariant} ${SECTION_THEMES[section.theme].className}`}
         id={section.id}
         ref={stackRef}
-        style={{ '--systems-step-height': `${section.items.length * 100}vh` }}
+        style={{ '--systems-step-height': `${wordStepCount * 100}vh` }}
       >
-        {section.items.map((item, index) => (
+        {section.items.slice(0, wordStepCount).map((item, index) => (
           <span
             aria-hidden="true"
             className="systems-step-snap"
@@ -1941,7 +2042,51 @@ function LandingApp() {
 
   const { activeIndex, sectionProgress, modelState, showNav } = useScrollModelState();
   const activeSection = sections[activeIndex];
-  const activeTheme = useMemo(() => SECTION_THEMES[sections[activeIndex]?.theme || 'blue'], [activeIndex]);
+  const systemsTintOpacity = useMemo(() => {
+    const currentSection = sections[activeIndex];
+    const nextSection = sections[activeIndex + 1];
+
+    if (currentSection?.type !== 'systems') return 0;
+    if (currentSection.systemsSequence?.length) {
+      const sequenceProgress = getSystemsSequenceProgress(currentSection, sectionProgress);
+      const fromTheme = sequenceProgress.sequence[sequenceProgress.fromIndex]?.theme || currentSection.theme;
+      const toTheme = sequenceProgress.sequence[sequenceProgress.toIndex]?.theme || fromTheme;
+      const isBlueStep = fromTheme === 'blue' && toTheme === 'blue';
+
+      if (isBlueStep) return 0;
+      if (fromTheme === 'blue') {
+        return smoothstep(0.18, 1, sequenceProgress.stepProgress) * 0.86;
+      }
+
+      return 0.86;
+    }
+
+    if (currentSection.theme === 'blue' && nextSection?.type === 'systems') {
+      return smoothstep(0.78, 1, sectionProgress) * 0.86;
+    }
+
+    return currentSection.theme === 'blue' ? 0 : 0.86;
+  }, [activeIndex, sectionProgress]);
+  const activeTheme = useMemo(() => {
+    const currentSection = sections[activeIndex];
+    const nextSection = sections[activeIndex + 1];
+    const currentTheme = SECTION_THEMES[currentSection?.theme || 'blue'];
+
+    if (currentSection?.systemsSequence?.length) {
+      const sequenceProgress = getSystemsSequenceProgress(currentSection, sectionProgress);
+      const fromTheme = SECTION_THEMES[sequenceProgress.sequence[sequenceProgress.fromIndex]?.theme || currentSection.theme];
+      const toTheme = SECTION_THEMES[sequenceProgress.sequence[sequenceProgress.toIndex]?.theme || currentSection.theme];
+
+      return mixTheme(fromTheme, toTheme, smoothstep(0, 1, sequenceProgress.stepProgress));
+    }
+
+    if (currentSection?.type === 'systems' && nextSection?.type === 'systems') {
+      const morphProgress = smoothstep(0.78, 1, sectionProgress);
+      return mixTheme(currentTheme, SECTION_THEMES[nextSection.theme], morphProgress);
+    }
+
+    return currentTheme;
+  }, [activeIndex, sectionProgress]);
   const heroBerryOpacity = activeSection?.id === 'intro' ? 1 - smoothstep(0.14, 0.58, sectionProgress) : 0;
   const [preloaderLocked, setPreloaderLocked] = useState(false);
   const [introRevealPhase, setIntroRevealPhase] = useState('idle');
@@ -2031,9 +2176,11 @@ function LandingApp() {
         '--active-primary': activeTheme.primary,
         '--active-secondary': activeTheme.secondary,
         '--active-glow': activeTheme.glow,
+        '--systems-tint-opacity': systemsTintOpacity,
       }}
     >
-      <FixedHeroSequenceBackground visible={activeIndex > 0 && activeIndex <= 2} berryOpacity={heroBerryOpacity} />
+      <FixedHeroSequenceBackground visible={activeIndex === 1} berryOpacity={heroBerryOpacity} />
+      <FixedSystemsBackground visible={activeSection?.type === 'systems'} />
       <AthoraScene modelState={modelState} hidden={hideSceneDuringIntroReveal} />
       <Navigation activeIndex={activeIndex} showNav={showNav} preloaderLocked={preloaderLocked} />
       <PreloaderTransitionOverlay phase={introRevealPhase} />
