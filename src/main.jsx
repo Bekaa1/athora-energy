@@ -57,7 +57,7 @@ const sections = [
       scene: 3,
       opacity: 1,
       asset: 'screen1',
-      clipProgress: 0,
+      clipProgress: 1,
       spin: 0,
       floatTilt: 0.01,
     },
@@ -72,7 +72,7 @@ const sections = [
     wordStepScroll: true,
     modelTransitionStart: 0.82,
     modelState: {
-      x: 1.34,
+      x: 1.94,
       y: -0.92,
       z: 0,
       scale: 1.38,
@@ -81,8 +81,8 @@ const sections = [
       pitch: -0.4,
       scene: 3,
       opacity: 1,
-      asset: 'screen1',
-      clipProgress: 0.35,
+      asset: 'screen2Blue',
+      clipProgress: 0,
       spin: 0,
       floatTilt: 0.01,
     },
@@ -94,8 +94,21 @@ const sections = [
     items: ['Energy', 'Vitamins', 'Immunity'],
     theme: 'orange',
     figmaVariant: 'energy',
-    figmaCan: '/figma-systems/energy-can-render.png',
-    modelState: { x: 1.85, y: 0.05, z: 0, scale: 1.02, rotate: 0.72, scene: 3, opacity: 0 },
+    modelState: {
+      x: 1.34,
+      y: -0.92,
+      z: 0,
+      scale: 1.38,
+      rotate: -0.64,
+      tilt: -0.42,
+      pitch: -0.4,
+      scene: 3,
+      opacity: 1,
+      asset: 'screen2Orange',
+      clipProgress: 0,
+      spin: 0,
+      floatTilt: 0.01,
+    },
   },
   {
     id: 'vitamins',
@@ -104,14 +117,28 @@ const sections = [
     items: ['Vitamins', 'Immunity'],
     theme: 'green',
     figmaVariant: 'vitamins',
-    figmaCan: '/figma-systems/vitamins-can-render.png',
-    modelState: { x: 1.65, y: 0.08, z: 0, scale: 1.02, rotate: -0.25, scene: 3, opacity: 0 },
+    modelState: {
+      x: 1.34,
+      y: -0.92,
+      z: 0,
+      scale: 1.38,
+      rotate: -0.64,
+      tilt: -0.42,
+      pitch: -0.4,
+      scene: 3,
+      opacity: 1,
+      asset: 'screen2Green',
+      clipProgress: 0,
+      spin: 0,
+      floatTilt: 0.01,
+    },
   },
   {
     id: 'five-products',
     type: 'claim-stack',
     theme: 'blue',
     figmaClaim: 'claim-stack',
+    modelTransitionStart: 1,
     claims: [
       {
         id: 'five-products',
@@ -134,17 +161,21 @@ const sections = [
     type: 'lineup',
     headline: 'ATHORA',
     theme: 'blue',
-    modelState: { x: 0, y: -0.2, z: 0, scale: 0.82, rotate: 0.25, scene: 3, opacity: 0 },
-  },
-  {
-    id: 'daily',
-    type: 'claim',
-    headline: 'one daily drink',
-    headlineLines: ['ONE DAILY DRINK'],
-    mobileHeadlineLines: ['ONE DAILY', 'DRINK'],
-    theme: 'blue',
-    figmaClaim: 'daily',
-    modelState: { x: 0.1, y: 0.05, z: 0, scale: 0.96, rotate: -0.15, scene: 3, opacity: 0 },
+    modelState: {
+      x: -0.12,
+      y: -0.22,
+      z: 0,
+      scale: 1.04,
+      rotate: 0,
+      tilt: 0,
+      pitch: 0,
+      scene: 3,
+      opacity: 1,
+      asset: 'screen3Desk',
+      clipProgress: 0,
+      spin: 0,
+      floatTilt: 0,
+    },
   },
   {
     id: 'open-can',
@@ -210,8 +241,131 @@ const sections = [
   },
 ];
 
-const INTRO_REVEAL_PREP_MS = 320;
-const INTRO_REVEAL_DURATION_MS = 900;
+const INTRO_REVEAL_PREP_MS = 420;
+const INTRO_REVEAL_DURATION_MS = 1050;
+const INTRO_SCENE_REVEAL_DELAY_MS = 120;
+const PRELOADER_DURATION_MS = 3000;
+const PRELOADER_COMPLETE_HOLD_MS = 1500;
+
+const LEGAL_LINKS = [
+  { label: 'Privacy Policy', path: '/privacy-policy' },
+  { label: 'Terms', path: '/terms' },
+  { label: 'qualifiers', path: '/qualifiers' },
+];
+
+const LEGAL_PAGES = {
+  '/privacy-policy': {
+    slug: 'privacy-policy',
+    title: 'Privacy policy',
+    height: 1614,
+    background: '/figma-legal/privacy-bg.png',
+    wordmark: '/figma-legal/privacy-wordmark.svg',
+    blocks: [
+      { type: 'p', text: 'Effective Date: April 20, 2026' },
+      { type: 'space' },
+      { type: 'p', text: 'ATHORA, LLC ("ATHORA," "we," "our," or "us") respects your privacy and is committed to protecting your personal information.' },
+      { type: 'space' },
+      { type: 'p', text: 'This Privacy Policy explains how we collect and use information when you visit our website or sign up to be notified about ATHORA.' },
+      { type: 'space' },
+      { type: 'p', text: '1. Information We Collect' },
+      { type: 'p', text: 'When you sign up to receive updates about ATHORA, we may collect:' },
+      { type: 'list', items: ['Email address', 'Name (if provided)', 'Basic website usage data such as IP address, browser type, and pages visited'] },
+      { type: 'space' },
+      { type: 'p', text: '2. How We Use Your Information' },
+      { type: 'p', text: 'We use your information solely to:' },
+      { type: 'list', items: ['Notify you when ATHORA becomes available', 'Provide important launch or availability updates', 'Operate and improve our website'] },
+      { type: 'space' },
+      { type: 'p', text: '3. Launch Notification Consent' },
+      { type: 'p', text: 'By submitting your email address through the ATHORA website, you agree to receive email communications notifying you when ATHORA launches or becomes available. these communications are limited to launch-related updates and essential brand announcements. You may unsubscribe at any time using the unsubscribe link included in our emails.' },
+      { type: 'space' },
+      { type: 'p', text: '4. Sharing of Information' },
+      { type: 'p', text: 'ATHORA does not sell or rent your personal information. We may share information only with trusted service providers that help us operate our website or send launch notifications.' },
+      { type: 'space' },
+      { type: 'p', text: '5. Data Security' },
+      { type: 'p', text: 'We implement reasonable safeguards to protect your information. However, no internet transmission can be guaranteed completely secure.' },
+      { type: 'space' },
+      { type: 'p', text: '6. Data Retention' },
+      { type: 'p', text: 'We retain your information only as long as necessary to provide launch notifications or until you unsubscribe.' },
+      { type: 'space' },
+      { type: 'p', text: '7. Changes to This Policy' },
+      { type: 'p', text: 'We may update this Privacy Policy periodically. Continued use of the website indicates acceptance of any updates.' },
+    ],
+  },
+  '/terms': {
+    slug: 'terms',
+    title: 'terms',
+    height: 2414,
+    background: '/figma-legal/terms-bg.png',
+    wordmark: '/figma-legal/terms-wordmark.svg',
+    blocks: [
+      { type: 'p', text: 'Effective Date: April 20, 2026' },
+      { type: 'space' },
+      { type: 'p', text: 'Welcome to ATHORA.' },
+      { type: 'space' },
+      { type: 'p', text: 'These Terms govern your use of the ATHORA website operated by ATHORA, LLC ("ATHORA," "we," "our," or "us").' },
+      { type: 'space' },
+      { type: 'p', text: 'By accessing or using this website, you agree to these Terms.' },
+      { type: 'space' },
+      { type: 'p', text: '1. Website Use' },
+      { type: 'p', text: 'The ATHORA website is intended to provide information about ATHORA and allow users to sign up for launch notifications and updates. You agree to use this website only for lawful purposes and in a manner that does not interfere with the operation or security of the website.' },
+      { type: 'space' },
+      { type: 'p', text: '2. Product & Information Disclaimer' },
+      { type: 'p', text: 'ATHORA provides general product and wellness information for informational purposes only.' },
+      { type: 'p', text: 'ATHORA products and website content are not intended to provide medical advice and should not be relied upon as a substitute for professional medical guidance. Always consult a qualified healthcare professional regarding any health-related questions or dietary concerns.' },
+      { type: 'space' },
+      { type: 'p', text: '3. FDA Disclaimer' },
+      { type: 'p', text: 'Statements made regarding ATHORA products have not been evaluated by the Food and Drug Administration. ATHORA products are not intended to diagnose, treat, cure, or prevent any disease.' },
+      { type: 'space' },
+      { type: 'p', text: '4. Nutritional & Pricing Information' },
+      { type: 'p', text: 'Any nutritional values, ingredients, functionality descriptions, or pricing displayed on the website are subject to change without notice. References to "$4/day" reflect estimated subscription pricing and excludes taxes, shipping, and other applicable fees. Comparisons to other product categories or daily routines are illustrative estimates only.' },
+      { type: 'space' },
+      { type: 'p', text: '5. Email Communications' },
+      { type: 'p', text: 'By submitting your email address through the ATHORA website, you consent to receive launch updates, availability notifications, and limited brand-related communications from ATHORA. you may unsubscribe at any time using the unsubscribe link included in our emails.' },
+      { type: 'space' },
+      { type: 'p', text: '6. Intellectual Property' },
+      { type: 'p', text: 'All website content, including but not limited to:' },
+      { type: 'list', items: ['logos', 'branding', 'designs', 'graphics', 'animations', 'copy', 'product names', 'trademarks', 'visual assets'] },
+      { type: 'p', text: 'are the property of ATHORA, LLC or its licensors and may not be copied, reproduced, modified, or distributed without prior written permission.' },
+      { type: 'space' },
+      { type: 'p', text: '7. Third-Party Services' },
+      { type: 'p', text: 'ATHORA may use third-party platforms or providers to operate portions of the website, analytics, email communications, or infrastructure. We are not responsible for the content, policies, or practices of third-party services.' },
+      { type: 'space' },
+      { type: 'p', text: '8. Limitation of Liability' },
+      { type: 'p', text: 'To the fullest extent permitted by law, ATHORA shall not be liable for any indirect, incidental, consequential, or special damages arising from:' },
+      { type: 'list', items: ['use of the website', 'inability to access the website', 'reliance on website content', 'errors or interruptions'] },
+      { type: 'p', text: 'Your use of the website is at your own risk.' },
+      { type: 'space' },
+      { type: 'p', text: '9. No Guarantees' },
+      { type: 'p', text: 'ATHORA does not guarantee:' },
+      { type: 'list', items: ['uninterrupted website availability', 'launch timing', 'future product availability', 'product compatibility with individual dietary preferences or sensitivities'] },
+      { type: 'space' },
+      { type: 'p', text: '10. Governing Law' },
+      { type: 'p', text: 'These Terms are governed by the laws of the Commonwealth of Massachusetts, without regard to conflict of law principles.' },
+      { type: 'space' },
+      { type: 'p', text: '11. Changes to These Terms' },
+      { type: 'p', text: 'ATHORA may update these Terms periodically.' },
+      { type: 'p', text: 'Continued use of the website after updates constitutes acceptance of the revised Terms.' },
+    ],
+  },
+  '/qualifiers': {
+    slug: 'qualifiers',
+    title: 'qualifiers',
+    height: 976,
+    background: '/figma-legal/qualifiers-bg.png',
+    wordmark: '/figma-legal/qualifiers-wordmark.svg',
+    blocks: [
+      { type: 'p', text: 'Effective Date: April 20, 2026' },
+      { type: 'space' },
+      { type: 'p', text: '* Based on estimated daily costs across hydration, energy, and supplement categories. $4/day pricing reflects subscription pricing; excludes taxes.' },
+      { type: 'space' },
+      { type: 'p', text: 'This product is intended to support general wellness and hydration.' },
+      { type: 'space' },
+      { type: 'p', text: 'These statements have not been evaluated by the Food and Drug Administration.' },
+      { type: 'space' },
+      { type: 'p', text: 'This product is not intended to diagnose, treat, cure, or prevent any disease.' },
+    ],
+  },
+};
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -239,6 +393,7 @@ function interpolateState(a, b, t) {
     spin: lerp(a.spin ?? 0.26, b.spin ?? 0.26, t),
     floatTilt: lerp(a.floatTilt ?? 0.055, b.floatTilt ?? 0.055, t),
     clipProgress: lerp(a.clipProgress ?? 0, b.clipProgress ?? 0, t),
+    flavorProgress: lerp(a.flavorProgress ?? 0, b.flavorProgress ?? a.flavorProgress ?? 0, t),
     asset: t < 0.5 ? a.asset : b.asset,
     scene: t < 0.5 ? a.scene : b.scene,
   };
@@ -310,12 +465,27 @@ function useScrollModelState() {
         const totalScrollable = Math.max(document.documentElement.scrollHeight - sectionHeight, 1);
         const showNav = scrollY >= sectionHeight * 0.72 || window.location.hash === '#intro';
 
+        let interpolatedModelState = interpolateState(current, next, modelProgress);
+        if (currentSection.flavorScroll) {
+          const itemCount = currentSection.items?.length || 1;
+          const flavorConfig = currentSection.flavorScroll;
+          const rawFlavorProgress = clamp(sectionProgress * Math.max(itemCount - 1, 1), 0, flavorConfig.maxFlavor);
+          const flavorAmount = clamp(rawFlavorProgress / Math.max(flavorConfig.maxFlavor, 1), 0, 1);
+
+          interpolatedModelState = {
+            ...interpolatedModelState,
+            asset: current.asset,
+            clipProgress: lerp(flavorConfig.clipStart, flavorConfig.clipEnd, flavorAmount),
+            flavorProgress: rawFlavorProgress,
+          };
+        }
+
         setState({
           progress: clamp(scrollY / totalScrollable, 0, 1),
           activeIndex,
           sectionProgress,
           showNav,
-          modelState: interpolateState(current, next, modelProgress),
+          modelState: interpolatedModelState,
         });
       });
     };
@@ -495,7 +665,7 @@ function normalizeObject(object, targetHeight = 3.35) {
   }
 }
 
-function AthoraScene({ modelState }) {
+function AthoraScene({ modelState, hidden = false }) {
   const mountRef = useRef(null);
   const modelStateRef = useRef(modelState);
 
@@ -513,7 +683,7 @@ function AthoraScene({ modelState }) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.88;
+    renderer.toneMappingExposure = 0.25;
     renderer.setClearColor(0x000000, 0);
     mount.appendChild(renderer.domElement);
 
@@ -522,6 +692,7 @@ function AthoraScene({ modelState }) {
     const environmentTexture = pmrem.fromScene(roomEnvironment, 0.04).texture;
     roomEnvironment.dispose();
     pmrem.dispose();
+    const maxTextureAnisotropy = renderer.capabilities.getMaxAnisotropy();
 
     const root = new THREE.Group();
     scene.add(root);
@@ -530,15 +701,62 @@ function AthoraScene({ modelState }) {
     root.add(modelWrap);
 
     const fallback = createFallbackCan();
+    fallback.visible = false;
     modelWrap.add(fallback);
 
     const sceneVariants = [];
     const assetVariants = { fallback };
     const animationMixers = new Map();
-    let activeVariant = fallback;
+    let activeVariant = null;
 
     const loader = new GLTFLoader();
-    const prepareClone = (clone, targetHeight = 3.35) => {
+    const getFlavorIndex = (mesh, materials) => {
+      const names = [
+        mesh.name,
+        mesh.parent?.name,
+        ...materials.map((material) => material.name || ''),
+      ].join(' ');
+      if (/blue|Cylinder002|250_ml002/i.test(names)) return 0;
+      if (/orange|mango|Cylinder005|250_ml003/i.test(names)) return 1;
+      if (/green|lime|lemon|Cylinder001|250_ml001/i.test(names)) return 2;
+      return null;
+    };
+
+    const tuneCanMaterial = (material) => {
+      const name = material.name || '';
+      const isAluminum = /aluminum|aluminium|scuffed/i.test(name);
+      const isCanBody = /blue|orange|green/i.test(name);
+
+      if (material.map) {
+        material.map.anisotropy = Math.min(maxTextureAnisotropy, 8);
+        material.map.needsUpdate = true;
+      }
+
+      if (!isAluminum && !isCanBody) return;
+
+      material.envMap = environmentTexture;
+
+      if (isAluminum) {
+        material.color?.set?.(0xe7eef0);
+        if ('metalness' in material) material.metalness = 1;
+        if ('roughness' in material) material.roughness = 0.14;
+        if ('envMapIntensity' in material) material.envMapIntensity = 2.75;
+      }
+
+      if (isCanBody) {
+        material.color?.set?.(0xffffff);
+        if ('metalness' in material) material.metalness = Math.max(material.metalness ?? 0, 0.14);
+        if ('roughness' in material) material.roughness = Math.min(material.roughness ?? 0.54, 0.28);
+        if ('envMapIntensity' in material) material.envMapIntensity = 1.78;
+        if ('clearcoat' in material) material.clearcoat = 0.68;
+        if ('clearcoatRoughness' in material) material.clearcoatRoughness = 0.11;
+        if ('reflectivity' in material) material.reflectivity = 0.62;
+      }
+
+      material.needsUpdate = true;
+    };
+
+    const prepareClone = (clone, targetHeight = 3.35, options = {}) => {
       clone.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
@@ -549,14 +767,12 @@ function AthoraScene({ modelState }) {
               ? materials.map((material) => material.clone())
               : child.material.clone();
             const clonedMaterials = Array.isArray(child.material) ? child.material : [child.material];
+            const flavorIndex = options.flavorDriven ? getFlavorIndex(child, clonedMaterials) : null;
+            if (flavorIndex !== null) {
+              child.userData.flavorIndex = flavorIndex;
+            }
             clonedMaterials.forEach((material) => {
-              if (/aluminum|aluminium|scuffed/i.test(material.name || '')) {
-                material.envMap = environmentTexture;
-                material.color?.set?.(0xd8dee2);
-                if ('metalness' in material) material.metalness = 0.68;
-                if ('roughness' in material) material.roughness = 0.2;
-                if ('envMapIntensity' in material) material.envMapIntensity = 1.45;
-              }
+              tuneCanMaterial(material);
               material.transparent = material.transparent || material.opacity < 1;
               material.needsUpdate = true;
             });
@@ -585,34 +801,6 @@ function AthoraScene({ modelState }) {
     };
 
     loader.load(
-      '/blender-files/Final.glb',
-      (gltf) => {
-        gltf.scenes.forEach((variant, index) => {
-          const clone = variant.clone(true);
-          if (index === 0) {
-            const sceneHelpers = [];
-            clone.traverse((child) => {
-              const materials = child.material ? (Array.isArray(child.material) ? child.material : [child.material]) : [];
-              const materialNames = materials.map((material) => material.name);
-              if (child.name === 'Cylinder.004' || materialNames.includes('Glow') || materialNames.includes('Base.001')) {
-                sceneHelpers.push(child);
-              }
-            });
-            sceneHelpers.forEach((child) => child.parent?.remove(child));
-          }
-          sceneVariants[index] = prepareClone(clone, 3.35);
-          sceneVariants[index].visible = index === (modelStateRef.current.scene || 0);
-        });
-
-        activeVariant = sceneVariants[modelStateRef.current.scene] || fallback;
-      },
-      undefined,
-      () => {
-        fallback.visible = true;
-      }
-    );
-
-    loader.load(
       '/blender-files/screens/1screen.glb',
       (gltf) => {
         const clone = gltf.scene.clone(true);
@@ -634,10 +822,84 @@ function AthoraScene({ modelState }) {
       }
     );
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-    const key = new THREE.DirectionalLight(0xffffff, 2.15);
-    key.position.set(3, 5, 4);
+    loader.load(
+      '/blender-files/screens/2screen-blue-orange-green.glb',
+      (gltf) => {
+        const createFlavorVariant = (flavorIndex) => {
+          const clone = gltf.scene.clone(true);
+          const removableMeshes = [];
+
+          clone.traverse((child) => {
+            if (!child.isMesh || !child.material) return;
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            if (getFlavorIndex(child, materials) !== flavorIndex) {
+              removableMeshes.push(child);
+            }
+          });
+          removableMeshes.forEach((child) => child.parent?.remove(child));
+
+          const variant = prepareClone(clone, 3.35);
+          // Keep each flavor in the exported base pose; the full GLB animation can move
+          // isolated cans outside our camera after we remove the other flavors.
+          return variant;
+        };
+
+        assetVariants.screen2Blue = createFlavorVariant(0);
+        assetVariants.screen2Orange = createFlavorVariant(1);
+        assetVariants.screen2Green = createFlavorVariant(2);
+      },
+      undefined,
+      () => {
+        assetVariants.screen2Blue = undefined;
+        assetVariants.screen2Orange = undefined;
+        assetVariants.screen2Green = undefined;
+      }
+    );
+
+    loader.load(
+      '/blender-files/screens/3screen-on-desk-three.glb',
+      (gltf) => {
+        const clone = gltf.scene.clone(true);
+        const deskParts = [];
+        const lineupOffsets = [
+          { match: /aluminium_can_250_ml005|250 ml\.005/i, x: -0.23, y: 0, z: 0 },
+          { match: /aluminium_can_250_ml006|250 ml\.006/i, x: 0.12, y: 0, z: 0 },
+          { match: /aluminium_can_250_ml007|250 ml\.007/i, x: 0.25, y: 0, z: 0 },
+        ];
+        clone.traverse((child) => {
+          const materials = child.material ? (Array.isArray(child.material) ? child.material : [child.material]) : [];
+          const materialNames = materials.map((material) => material.name || '').join(' ');
+          if (/Cylinder\.?006|Cylinder\.?013/i.test(child.name) || /Glow|Base\.001/i.test(materialNames)) {
+            deskParts.push(child);
+            return;
+          }
+          const offset = lineupOffsets.find(({ match }) => match.test(child.name));
+          if (offset) {
+            child.userData.lineupOffset = offset;
+          }
+        });
+        deskParts.forEach((child) => child.parent?.remove(child));
+        assetVariants.screen3Desk = prepareClone(clone, 3.7);
+        bindClipsToScroll(assetVariants.screen3Desk, gltf.animations);
+      },
+      undefined,
+      () => {
+        assetVariants.screen3Desk = undefined;
+      }
+    );
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+    const key = new THREE.DirectionalLight(0xffffff, 2.45);
+    key.position.set(3.4, 4.8, 4.6);
     scene.add(key);
+    const frontGloss = new THREE.SpotLight(0xffffff, 30, 14, Math.PI / 6, 0.42, 1.25);
+    frontGloss.position.set(-2.6, 1.2, 5.8);
+    frontGloss.target.position.set(0.35, -0.2, 0);
+    scene.add(frontGloss);
+    scene.add(frontGloss.target);
+    const coolRim = new THREE.DirectionalLight(0x9ff7ff, 1.8);
+    coolRim.position.set(-4.2, -0.6, 3.2);
+    scene.add(coolRim);
     const cyan = new THREE.PointLight(0x00ecff, 16, 9);
     cyan.position.set(-3, -1.8, 2.8);
     scene.add(cyan);
@@ -664,10 +926,37 @@ function AthoraScene({ modelState }) {
       const elapsed = clock.elapsedTime;
       const target = modelStateRef.current;
 
-      const wantedVariant = target.asset ? assetVariants[target.asset] || fallback : sceneVariants[target.scene] || fallback;
+      const wantedVariant = target.asset ? assetVariants[target.asset] : sceneVariants[target.scene];
+      const shouldShowModel = target.opacity > 0.001 && Boolean(wantedVariant);
+      modelWrap.visible = shouldShowModel;
+
+      if (!shouldShowModel) {
+        if (activeVariant) {
+          activeVariant.visible = false;
+          activeVariant = null;
+        }
+        renderer.render(scene, camera);
+        raf = requestAnimationFrame(animate);
+        return;
+      }
+
       const boundAnimation = animationMixers.get(wantedVariant);
       if (boundAnimation) {
         boundAnimation.mixer.setTime(boundAnimation.duration * clamp(target.clipProgress ?? 0, 0, 1));
+        wantedVariant.traverse((child) => {
+          const offset = child.userData.lineupOffset;
+          if (offset) {
+            if (!child.userData.lineupBasePosition) {
+              child.userData.lineupBasePosition = child.position.clone();
+            }
+            const basePosition = child.userData.lineupBasePosition;
+            child.position.set(
+              basePosition.x + offset.x,
+              basePosition.y + offset.y,
+              basePosition.z + offset.z
+            );
+          }
+        });
       }
       if (wantedVariant !== activeVariant) {
         if (activeVariant) activeVariant.visible = false;
@@ -692,11 +981,17 @@ function AthoraScene({ modelState }) {
       modelWrap.traverse((child) => {
         if (child.isMesh && child.material) {
           const materials = Array.isArray(child.material) ? child.material : [child.material];
+          let flavorOpacity = 1;
+          if (Number.isFinite(target.flavorProgress) && child.userData.flavorIndex !== undefined) {
+            const rawFlavorOpacity = clamp(1 - Math.abs(child.userData.flavorIndex - target.flavorProgress), 0, 1);
+            flavorOpacity = smoothstep(0, 1, rawFlavorOpacity);
+          }
+
           materials.forEach((material) => {
             if (material.userData.baseOpacity === undefined) {
               material.userData.baseOpacity = material.opacity ?? 1;
             }
-            material.opacity = material.userData.baseOpacity * target.opacity;
+            material.opacity = material.userData.baseOpacity * target.opacity * flavorOpacity;
             material.transparent = material.transparent || material.opacity < 1;
           });
         }
@@ -724,7 +1019,7 @@ function AthoraScene({ modelState }) {
     };
   }, []);
 
-  return <div className="scene" ref={mountRef} aria-label="ATHORA 3D product model" />;
+  return <div className={`scene ${hidden ? 'scene-hidden' : ''}`} ref={mountRef} aria-label="ATHORA 3D product model" />;
 }
 
 function createFallbackCan() {
@@ -758,7 +1053,7 @@ function createFallbackCan() {
   return group;
 }
 
-function ChromeDots() {
+function ChromeDots({ homeHref = '#intro' }) {
   const socials = [
     { label: 'Instagram', icon: '/figma-nav/social-instagram.svg' },
     { label: 'X', icon: '/figma-nav/social-x.svg' },
@@ -768,7 +1063,7 @@ function ChromeDots() {
   return (
     <div className="chrome-dots" aria-label="Social links">
       {socials.map((item) => (
-        <a className="social-button" href="#intro" aria-label={item.label} key={item.label}>
+        <a className="social-button" href={homeHref} aria-label={item.label} key={item.label}>
           <img src={item.icon} alt="" aria-hidden="true" />
         </a>
       ))}
@@ -833,7 +1128,7 @@ function NavFrameGlass() {
           <feGaussianBlur stdDeviation="7.5" />
           <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
           <feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.34 0" />
-          <feBlend mode="plus-lighter" in2="shape" result="effect1_innerShadow" />
+          <feBlend mode="screen" in2="shape" result="effect1_innerShadow" />
         </filter>
         <linearGradient id="nav-frame-bottom" x1="720" y1="0" x2="720" y2="130" gradientUnits="userSpaceOnUse">
           <stop offset="0.5" stopColor="#666666" stopOpacity="0" />
@@ -879,7 +1174,12 @@ function FixedHeroSequenceBackground({ visible, berryOpacity }) {
   );
 }
 
-function Navigation({ activeIndex, showNav, preloaderLocked }) {
+function Navigation({ activeIndex = 0, showNav, preloaderLocked, legal = false }) {
+  const homeHref = legal ? '/' : preloaderLocked ? '#intro' : '#installing';
+  const productHref = legal ? '/#all-systems' : '#all-systems';
+  const systemHref = legal ? '/#simplicity' : '#simplicity';
+  const accessHref = legal ? '/#access' : '#access';
+
   return (
     <header className={showNav ? 'site-nav' : 'site-nav site-nav-hidden'}>
       <div className="mobile-status-bar" aria-hidden="true">
@@ -892,35 +1192,40 @@ function Navigation({ activeIndex, showNav, preloaderLocked }) {
         </span>
       </div>
       <NavFrameGlass />
-      <ChromeDots />
-      <a className="nav-mark" href={preloaderLocked ? '#intro' : '#installing'} aria-label="ATHORA home">
+      <ChromeDots homeHref={homeHref} />
+      <a className="nav-mark" href={homeHref} aria-label="ATHORA home">
+        {/*
         <img src="/figma-nav/nav-union.svg" alt="" aria-hidden="true" />
+        */}
+        <img src="/figma-nav/Union.svg" alt="" aria-hidden="true" />
       </a>
       <nav aria-label="Primary navigation">
-        <a href="#all-systems">Product</a>
-        <a href="#simplicity">System</a>
-        <a className="nav-pill" href="#access">Get access</a>
+        <a href={productHref}>Product</a>
+        <a href={systemHref}>System</a>
+        <a className="nav-pill" href={accessHref}>Get access</a>
       </nav>
-      <div className="section-count" aria-label={`Section ${activeIndex + 1} of ${sections.length}`}>
-        {String(activeIndex + 1).padStart(2, '0')} / {sections.length}
-      </div>
+      {!legal ? (
+        <div className="section-count" aria-label={`Section ${activeIndex + 1} of ${sections.length}`}>
+          {String(activeIndex + 1).padStart(2, '0')} / {sections.length}
+        </div>
+      ) : null}
     </header>
   );
 }
 
 function InstallSection({ section, onIntroReveal }) {
   const [progress, setProgress] = useState(0);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     let raf = 0;
-    const duration = 2600;
     const startedAt = performance.now();
 
     const tick = (now) => {
       const elapsed = now - startedAt;
-      const progressValue = clamp(elapsed / duration, 0, 1);
+      const progressValue = clamp(elapsed / PRELOADER_DURATION_MS, 0, 1);
       setProgress(Math.round(progressValue * 100));
-      if (elapsed < duration) {
+      if (elapsed < PRELOADER_DURATION_MS) {
         raf = requestAnimationFrame(tick);
       }
     };
@@ -932,15 +1237,34 @@ function InstallSection({ section, onIntroReveal }) {
   useEffect(() => {
     if (progress < 100) return undefined;
 
+    const video = videoRef.current;
+    if (video) {
+      const lastFrameTime = Number.isFinite(video.duration) && video.duration > 0 ? Math.max(video.duration - 0.04, 0) : null;
+      if (lastFrameTime !== null) {
+        video.currentTime = lastFrameTime;
+      }
+      video.pause();
+    }
+
     const timer = window.setTimeout(() => {
       onIntroReveal?.();
-    }, 2000);
+    }, PRELOADER_COMPLETE_HOLD_MS);
 
     return () => window.clearTimeout(timer);
   }, [onIntroReveal, progress]);
 
   return (
     <section className={`panel install-panel ${SECTION_THEMES[section.theme].className}`} id={section.id}>
+      <video
+        ref={videoRef}
+        className="install-video"
+        src="/blender-files/screens/preloader.webm"
+        autoPlay
+        muted
+        playsInline
+        preload="auto"
+        aria-hidden="true"
+      />
       <AthoraLogo large />
       <div
         className="install-meter"
@@ -960,7 +1284,6 @@ function PreloaderTransitionOverlay({ phase }) {
 
   return (
     <div className={`intro-reveal-overlay intro-reveal-overlay-${phase}`} aria-hidden="true">
-      <div className="intro-reveal-can" />
       <div className="intro-reveal-ui">
         <AthoraLogo large />
         <div className="install-meter" aria-label="Installation progress 100 percent" style={{ '--progress': '100%' }}>
@@ -1283,32 +1606,15 @@ function ClaimStackSection({ section }) {
 }
 
 function ProductLineupSection({ section }) {
-  const cans = [
-    {
-      src: '/figma-systems/vitamins-can-render.png',
-      label: 'Lemon Lime',
-      className: 'lineup-product-can lineup-product-can-vitamins',
-    },
-    {
-      src: '/figma-systems/hydration-can-render.png',
-      label: 'Coconut Blueberry',
-      className: 'lineup-product-can lineup-product-can-hydration',
-    },
-    {
-      src: '/figma-systems/energy-can-render.png',
-      label: 'Mango Vanilla',
-      className: 'lineup-product-can lineup-product-can-energy',
-    },
-  ];
-
   return (
     <section className={`panel lineup-panel figma-lineup-panel ${SECTION_THEMES[section.theme].className}`} id={section.id}>
-      <div className="lineup-products" aria-hidden="true">
-        {cans.map((can) => (
-          <img className={can.className} src={can.src} alt="" key={can.label} draggable="false" />
-        ))}
-      </div>
-      <AthoraLogo large className="lineup-brand-wordmark" />
+      <div className="lineup-desk" aria-hidden="true" />
+      <img
+        className="lineup-brand-wordmark lineup-brand-vector"
+        src="/figma-lineup/athora-vector-wordmark.svg"
+        alt="ATHORA"
+        draggable="false"
+      />
       <ScrollDown />
     </section>
   );
@@ -1495,11 +1801,12 @@ function AccessSection({ section }) {
         <p>{section.legal}</p>
       </div>
       <footer className="footer-links">
-        <a href="#access">Privacy Policy</a>
-        <span>&bull;</span>
-        <a href="#access">Terms</a>
-        <span>&bull;</span>
-        <a href="#access">qualifiers</a>
+        {LEGAL_LINKS.map((link, index) => (
+          <React.Fragment key={link.path}>
+            {index > 0 ? <span>&bull;</span> : null}
+            <a href={link.path}>{link.label}</a>
+          </React.Fragment>
+        ))}
         <span className="footer-spacer" />
         <span>&copy; 2026 ATHORA</span>
         <span>&bull;</span>
@@ -1511,6 +1818,91 @@ function AccessSection({ section }) {
 
 function ScrollDown() {
   return <p className="scroll-down">Scroll down</p>;
+}
+
+function LegalBodyBlock({ block, index }) {
+  if (block.type === 'space') {
+    return <span className="legal-space" aria-hidden="true" key={`space-${index}`} />;
+  }
+
+  if (block.type === 'list') {
+    return (
+      <ul key={`list-${index}`}>
+        {block.items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    );
+  }
+
+  return <p key={`p-${index}`}>{block.text}</p>;
+}
+
+function LegalFooter({ page }) {
+  return (
+    <footer className="legal-footer">
+      <img className="legal-footer-wordmark" src={page.wordmark} alt="ATHORA" draggable="false" />
+      <div className="legal-footer-row">
+        <div className="legal-footer-links">
+          {LEGAL_LINKS.map((link, index) => (
+            <React.Fragment key={link.path}>
+              {index > 0 ? <span>&bull;</span> : null}
+              <a href={link.path}>{link.label}</a>
+            </React.Fragment>
+          ))}
+        </div>
+        <div className="legal-footer-copyright">
+          <span>&copy; 2026 ATHORA</span>
+          <span>&bull;</span>
+          <span>ALL RIGHTS RESERVED</span>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+function LegalPage({ page }) {
+  useEffect(() => {
+    document.documentElement.classList.add('legal-document');
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+    return () => {
+      document.documentElement.classList.remove('legal-document');
+    };
+  }, [page.slug]);
+
+  return (
+    <div
+      className={`legal-page legal-page-${page.slug}`}
+      style={{
+        '--active-primary': '#061dff',
+        '--active-secondary': '#03e5f0',
+        '--active-glow': '#7bf9ff',
+        '--legal-height': `${page.height}px`,
+      }}
+    >
+      <div className="legal-background" aria-hidden="true">
+        <img className="legal-bg-image" src={page.background} alt="" draggable="false" />
+        <img className="legal-rect legal-rect-25" src="/figma-legal/rectangle-25.svg" alt="" draggable="false" />
+        <img className="legal-rect legal-rect-23" src="/figma-legal/rectangle-23.svg" alt="" draggable="false" />
+        <img className="legal-rect legal-rect-24" src="/figma-legal/rectangle-24.svg" alt="" draggable="false" />
+      </div>
+      <Navigation showNav legal />
+      <main className="legal-shell">
+        <section className="legal-frame" aria-labelledby={`${page.slug}-title`}>
+          <div className="legal-copy">
+            <h1 id={`${page.slug}-title`}>{page.title}</h1>
+            <div className="legal-body">
+              {page.blocks.map((block, index) => (
+                <LegalBodyBlock block={block} index={index} key={`${block.type}-${index}`} />
+              ))}
+            </div>
+          </div>
+          <LegalFooter page={page} />
+        </section>
+      </main>
+    </div>
+  );
 }
 
 function SectionRenderer({ section, onIntroReveal, isActive }) {
@@ -1544,7 +1936,7 @@ function SectionRenderer({ section, onIntroReveal, isActive }) {
   }
 }
 
-function App() {
+function LandingApp() {
   useStartAtPreloaderOnPageLoad();
 
   const { activeIndex, sectionProgress, modelState, showNav } = useScrollModelState();
@@ -1553,6 +1945,7 @@ function App() {
   const heroBerryOpacity = activeSection?.id === 'intro' ? 1 - smoothstep(0.14, 0.58, sectionProgress) : 0;
   const [preloaderLocked, setPreloaderLocked] = useState(false);
   const [introRevealPhase, setIntroRevealPhase] = useState('idle');
+  const [introSceneHeld, setIntroSceneHeld] = useState(false);
   const introRevealPhaseRef = useRef('idle');
   const introRevealTimersRef = useRef([]);
   const restoreScrollStylesRef = useRef(() => {});
@@ -1596,11 +1989,13 @@ function App() {
     if (prefersReducedMotion) {
       window.scrollTo(0, intro.offsetTop);
       setPreloaderLocked(true);
+      setIntroSceneHeld(false);
       restoreScrollStylesRef.current();
       setIntroRevealPhase('done');
       return;
     }
 
+    setIntroSceneHeld(true);
     setIntroRevealPhase('preparing');
 
     window.requestAnimationFrame(() => {
@@ -1615,12 +2010,19 @@ function App() {
           setPreloaderLocked(true);
           restoreScrollStylesRef.current();
           setIntroRevealPhase('done');
+
+          const sceneRevealTimer = window.setTimeout(() => {
+            setIntroSceneHeld(false);
+          }, INTRO_SCENE_REVEAL_DELAY_MS);
+          introRevealTimersRef.current.push(sceneRevealTimer);
         }, INTRO_REVEAL_PREP_MS + INTRO_REVEAL_DURATION_MS + 80);
 
         introRevealTimersRef.current.push(revealTimer, doneTimer);
       });
     });
   }, []);
+
+  const hideSceneDuringIntroReveal = introSceneHeld || (introRevealPhase !== 'idle' && introRevealPhase !== 'done');
 
   return (
     <div
@@ -1632,7 +2034,7 @@ function App() {
       }}
     >
       <FixedHeroSequenceBackground visible={activeIndex > 0 && activeIndex <= 2} berryOpacity={heroBerryOpacity} />
-      <AthoraScene modelState={modelState} />
+      <AthoraScene modelState={modelState} hidden={hideSceneDuringIntroReveal} />
       <Navigation activeIndex={activeIndex} showNav={showNav} preloaderLocked={preloaderLocked} />
       <PreloaderTransitionOverlay phase={introRevealPhase} />
       <main>
@@ -1647,6 +2049,25 @@ function App() {
       </main>
     </div>
   );
+}
+
+function App() {
+  const [pathname, setPathname] = useState(() => window.location.pathname);
+
+  useEffect(() => {
+    const onPopState = () => setPathname(window.location.pathname);
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const normalizedPath = pathname.replace(/\/$/, '') || '/';
+  const legalPage = LEGAL_PAGES[normalizedPath];
+
+  if (legalPage) {
+    return <LegalPage page={legalPage} />;
+  }
+
+  return <LandingApp />;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
