@@ -113,10 +113,10 @@ const sections = [
       {
         theme: 'green',
         modelState: {
-          x: -0.14,
-          y: 0.82,
+          x: -2.1,
+          y: 0.8,
           z: 0,
-          scale: 2,
+          scale: 2.2,
           rotate: -0.64,
           tilt: -0.42,
           pitch: -0.4,
@@ -132,10 +132,10 @@ const sections = [
       {
         theme: 'green',
         modelState: {
-          x: 0.14,
-          y: -0.32,
+          x: -2.1,
+          y: 0.8,
           z: 0,
-          scale: 1.78,
+          scale: 2.2,
           rotate: -0.64,
           tilt: -0.42,
           pitch: -0.4,
@@ -194,7 +194,7 @@ const sections = [
     headline: 'ATHORA',
     theme: 'blue',
     modelState: {
-      x: -0.12,
+      x: -0.52,
       y: -0.22,
       z: 0,
       scale: 1.04,
@@ -559,6 +559,51 @@ function interpolateState(a, b, t) {
   };
 }
 
+function createFlavorSwapState(from, to, t, index = 0) {
+  const stableUntil = 0.16;
+  if (t <= stableUntil) return from;
+
+  const exitProgress = smoothstep(stableUntil, 0.64, t);
+  const enterProgress = smoothstep(0.42, 0.76, t);
+  const exitDirection = index % 2 === 0 ? 1 : 0.86;
+  const exitState = {
+    ...from,
+    x: lerp(from.x, from.x + 1.12 * exitDirection, exitProgress),
+    y: lerp(from.y, from.y - 0.88, exitProgress),
+    z: lerp(from.z ?? 0, (from.z ?? 0) - 0.08, exitProgress),
+    scale: lerp(from.scale, from.scale * 0.92, exitProgress),
+    rotate: lerp(from.rotate ?? 0, (from.rotate ?? 0) - 0.74, exitProgress),
+    tilt: lerp(from.tilt ?? 0, (from.tilt ?? 0) - 1.08, exitProgress),
+    pitch: lerp(from.pitch ?? 0, (from.pitch ?? 0) - 0.28, exitProgress),
+    opacity: 1 - smoothstep(0.54, 0.72, t),
+  };
+
+  if (enterProgress <= 0.001) return exitState;
+
+  const entryFrom = {
+    ...to,
+    x: to.x - 0.54,
+    y: to.y + 0.42,
+    z: (to.z ?? 0) - 0.04,
+    scale: to.scale * 0.88,
+    rotate: (to.rotate ?? 0) + 0.34,
+    tilt: (to.tilt ?? 0) + 0.3,
+    pitch: (to.pitch ?? 0) + 0.16,
+    opacity: 0,
+  };
+  const entryState = {
+    ...interpolateState(entryFrom, to, enterProgress),
+    asset: to.asset,
+    scene: to.scene,
+    opacity: enterProgress,
+  };
+
+  return {
+    ...entryState,
+    secondaryModels: exitState.opacity > 0.02 ? [exitState] : [],
+  };
+}
+
 function useScrollModelState() {
   const [state, setState] = useState({
     progress: 0,
@@ -638,11 +683,38 @@ function useScrollModelState() {
           const sequenceProgress = getSystemsSequenceProgress(currentSection, sectionProgress);
           const from = sequenceProgress.sequence[sequenceProgress.fromIndex]?.modelState || current;
           const to = sequenceProgress.sequence[sequenceProgress.toIndex]?.modelState || from;
-          const sequenceModelProgress = currentSection.wordStepScroll
-            ? smoothstep(0.42, 0.78, sequenceProgress.stepProgress)
-            : smoothstep(0, 1, sequenceProgress.stepProgress);
+          if (currentSection.wordStepScroll && from.asset && to.asset && from.asset !== to.asset) {
+            interpolatedModelState = createFlavorSwapState(from, to, sequenceProgress.stepProgress, sequenceProgress.fromIndex);
+          } else {
+            const sequenceModelProgress = currentSection.wordStepScroll
+              ? smoothstep(0.42, 0.78, sequenceProgress.stepProgress)
+              : smoothstep(0, 1, sequenceProgress.stepProgress);
 
-          interpolatedModelState = interpolateState(from, to, sequenceModelProgress);
+            interpolatedModelState = interpolateState(from, to, sequenceModelProgress);
+          }
+
+          if (currentSection.wordStepScroll) {
+            const systemsExitMotion = smoothstep(0.84, 0.935, rawSectionProgress);
+            const systemsExitFade = smoothstep(0.925, 0.965, rawSectionProgress);
+            if (systemsExitMotion > 0 || systemsExitFade > 0) {
+              interpolatedModelState = {
+                ...interpolatedModelState,
+                x: lerp(interpolatedModelState.x, interpolatedModelState.x + 0.56, systemsExitMotion),
+                y: lerp(interpolatedModelState.y, interpolatedModelState.y - 1.12, systemsExitMotion),
+                scale: lerp(interpolatedModelState.scale, interpolatedModelState.scale * 0.84, systemsExitMotion),
+                rotate: lerp(interpolatedModelState.rotate ?? 0, (interpolatedModelState.rotate ?? 0) + 0.22, systemsExitMotion),
+                tilt: lerp(interpolatedModelState.tilt ?? 0, (interpolatedModelState.tilt ?? 0) - 0.38, systemsExitMotion),
+                opacity: lerp(interpolatedModelState.opacity ?? 1, 0, systemsExitFade),
+                secondaryModels: interpolatedModelState.secondaryModels?.map((secondaryState) => ({
+                  ...secondaryState,
+                  x: lerp(secondaryState.x, secondaryState.x + 0.56, systemsExitMotion),
+                  y: lerp(secondaryState.y, secondaryState.y - 1.12, systemsExitMotion),
+                  scale: lerp(secondaryState.scale, secondaryState.scale * 0.84, systemsExitMotion),
+                  opacity: lerp(secondaryState.opacity ?? 1, 0, systemsExitFade),
+                })),
+              };
+            }
+          }
         }
 
         if (currentSection.flavorScroll) {
@@ -978,6 +1050,7 @@ function AthoraScene({ modelState, hidden = false }) {
     };
 
     const prepareClone = (clone, targetHeight = 3.35, options = {}) => {
+      const renderMaterials = [];
       clone.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
@@ -995,7 +1068,13 @@ function AthoraScene({ modelState, hidden = false }) {
             clonedMaterials.forEach((material) => {
               tuneCanMaterial(material);
               material.transparent = material.transparent || material.opacity < 1;
+              material.userData.baseOpacity = material.opacity ?? 1;
+              material.userData.baseTransparent = material.transparent;
               material.needsUpdate = true;
+              renderMaterials.push({
+                material,
+                flavorIndex: child.userData.flavorIndex,
+              });
             });
           }
         }
@@ -1005,6 +1084,14 @@ function AthoraScene({ modelState, hidden = false }) {
       } else {
         normalizeObject(clone, targetHeight);
       }
+      clone.userData.basePosition = clone.position.clone();
+      clone.userData.baseScale = clone.scale.clone();
+      clone.userData.baseRotation = clone.rotation.clone();
+      clone.userData.renderMaterials = renderMaterials;
+      clone.userData.lineupChildren = [];
+      clone.traverse((child) => {
+        if (child.userData.lineupOffset) clone.userData.lineupChildren.push(child);
+      });
       clone.visible = false;
       modelWrap.add(clone);
       return clone;
@@ -1045,23 +1132,26 @@ function AthoraScene({ modelState, hidden = false }) {
     const resolveVariant = (asset, sceneIndex) => (asset ? assetVariants[asset] : sceneVariants[sceneIndex]);
 
     const applyVariantOpacity = (variant, variantOpacity, targetState) => {
-      variant.traverse((child) => {
-        if (child.isMesh && child.material) {
-          const materials = Array.isArray(child.material) ? child.material : [child.material];
-          let flavorOpacity = 1;
-          if (Number.isFinite(targetState.flavorProgress) && child.userData.flavorIndex !== undefined) {
-            const rawFlavorOpacity = clamp(1 - Math.abs(child.userData.flavorIndex - targetState.flavorProgress), 0, 1);
-            flavorOpacity = smoothstep(0, 1, rawFlavorOpacity);
-          }
+      const renderMaterials = variant.userData.renderMaterials || [];
+      const flavorProgress = Number.isFinite(targetState.flavorProgress) ? targetState.flavorProgress : null;
+      const opacityKey = `${Math.round(variantOpacity * 1000)}:${flavorProgress === null ? 'x' : Math.round(flavorProgress * 1000)}`;
+      if (variant.userData.opacityKey === opacityKey) return;
 
-          materials.forEach((material) => {
-            if (material.userData.baseOpacity === undefined) {
-              material.userData.baseOpacity = material.opacity ?? 1;
-            }
-            material.opacity = material.userData.baseOpacity * variantOpacity * flavorOpacity;
-            material.transparent = material.transparent || material.opacity < 1;
-          });
+      variant.userData.opacityKey = opacityKey;
+      renderMaterials.forEach(({ material, flavorIndex }) => {
+        let flavorOpacity = 1;
+        if (flavorProgress !== null && flavorIndex !== undefined) {
+          const rawFlavorOpacity = clamp(1 - Math.abs(flavorIndex - flavorProgress), 0, 1);
+          flavorOpacity = smoothstep(0, 1, rawFlavorOpacity);
         }
+
+        const nextOpacity = material.userData.baseOpacity * variantOpacity * flavorOpacity;
+        const shouldBeTransparent = material.userData.baseTransparent || nextOpacity < 0.999;
+        if (material.transparent !== shouldBeTransparent) {
+          material.transparent = shouldBeTransparent;
+          material.needsUpdate = true;
+        }
+        material.opacity = nextOpacity;
       });
     };
 
@@ -1069,8 +1159,14 @@ function AthoraScene({ modelState, hidden = false }) {
       const boundAnimation = animationMixers.get(variant);
       if (!boundAnimation) return;
 
-      boundAnimation.mixer.setTime(boundAnimation.duration * clamp(targetState.clipProgress ?? 0, 0, 1));
-      variant.traverse((child) => {
+      const clipProgress = clamp(targetState.clipProgress ?? 0, 0, 1);
+      if (Math.abs((variant.userData.lastClipProgress ?? -1) - clipProgress) > 0.001) {
+        boundAnimation.mixer.setTime(boundAnimation.duration * clipProgress);
+        variant.userData.lastClipProgress = clipProgress;
+      }
+
+      const lineupChildren = variant.userData.lineupChildren || [];
+      lineupChildren.forEach((child) => {
         const offset = child.userData.lineupOffset;
         if (offset) {
           if (!child.userData.lineupBasePosition) {
@@ -1288,6 +1384,41 @@ function AthoraScene({ modelState, hidden = false }) {
       justStarted: false,
     };
 
+    const applyVariantTransform = (variant, state, elapsed, immediate = false) => {
+      const viewportScale = mount.clientWidth < 620 ? 0.92 : 1;
+      const basePosition = variant.userData.basePosition || new THREE.Vector3();
+      const baseScale = variant.userData.baseScale || new THREE.Vector3(1, 1, 1);
+      const baseRotation = variant.userData.baseRotation || new THREE.Euler();
+      const liveScale = state.scale * viewportScale * (1 + Math.sin(elapsed * 1.5) * 0.012);
+      const targetPosition = new THREE.Vector3(
+        basePosition.x + state.x,
+        basePosition.y + state.y,
+        basePosition.z + (state.z ?? 0)
+      );
+      const targetScale = new THREE.Vector3(
+        baseScale.x * liveScale,
+        baseScale.y * liveScale,
+        baseScale.z * liveScale
+      );
+      const targetRotationX = baseRotation.x + (state.pitch ?? 0);
+      const targetRotationY = baseRotation.y + (state.rotate ?? 0) + elapsed * (state.spin ?? 0.26);
+      const targetRotationZ = baseRotation.z + (state.tilt ?? 0) + Math.sin(elapsed * 0.6) * (state.floatTilt ?? 0.055);
+
+      if (immediate || !variant.userData.renderInitialized) {
+        variant.position.copy(targetPosition);
+        variant.scale.copy(targetScale);
+        variant.rotation.set(targetRotationX, targetRotationY, targetRotationZ);
+        variant.userData.renderInitialized = true;
+        return;
+      }
+
+      variant.position.lerp(targetPosition, 0.08);
+      variant.scale.lerp(targetScale, 0.08);
+      variant.rotation.x = lerp(variant.rotation.x, targetRotationX, 0.07);
+      variant.rotation.y = lerp(variant.rotation.y, targetRotationY, 0.07);
+      variant.rotation.z = lerp(variant.rotation.z, targetRotationZ, 0.07);
+    };
+
     const animate = () => {
       clock.getDelta();
       const elapsed = clock.elapsedTime;
@@ -1336,20 +1467,32 @@ function AthoraScene({ modelState, hidden = false }) {
         const fromOpacity = target.opacity * (1 - assetBlend);
         const toOpacity = target.opacity * assetBlend;
 
-        if (fromOpacity > 0.001) visibleModels.push({ variant: fromVariant, opacity: fromOpacity });
-        if (toOpacity > 0.001) visibleModels.push({ variant: toVariant, opacity: toOpacity });
+        if (fromOpacity > 0.001) visibleModels.push({ variant: fromVariant, opacity: fromOpacity, state: target });
+        if (toOpacity > 0.001) visibleModels.push({ variant: toVariant, opacity: toOpacity, state: target });
       } else if (wantedVariant && target.opacity > 0.001) {
-        visibleModels.push({ variant: wantedVariant, opacity: target.opacity });
+        visibleModels.push({ variant: wantedVariant, opacity: target.opacity, state: target });
       }
+
+      (target.secondaryModels || []).forEach((secondaryState) => {
+        const secondaryVariant = resolveVariant(secondaryState.asset, secondaryState.scene);
+        const secondaryOpacity = secondaryState.opacity ?? target.opacity ?? 1;
+        if (secondaryVariant && secondaryOpacity > 0.001 && !visibleModels.some((model) => model.variant === secondaryVariant)) {
+          visibleModels.push({ variant: secondaryVariant, opacity: secondaryOpacity, state: secondaryState });
+        }
+      });
 
       const visibleSet = new Set(visibleModels.map((model) => model.variant));
       const shouldShowModel = visibleModels.length > 0;
       modelWrap.visible = shouldShowModel;
+      modelWrap.position.set(0, 0, 0);
+      modelWrap.scale.setScalar(1);
+      modelWrap.rotation.set(0, 0, 0);
 
       if (!shouldShowModel) {
         wasShowingModel = false;
         activeVariants.forEach((variant) => {
           variant.visible = false;
+          variant.userData.renderInitialized = false;
         });
         activeVariants = new Set();
         renderer.render(scene, camera);
@@ -1358,35 +1501,19 @@ function AthoraScene({ modelState, hidden = false }) {
       }
 
       activeVariants.forEach((variant) => {
-        if (!visibleSet.has(variant)) variant.visible = false;
+        if (!visibleSet.has(variant)) {
+          variant.visible = false;
+          variant.userData.renderInitialized = false;
+        }
       });
-      visibleModels.forEach(({ variant, opacity }) => {
+      visibleModels.forEach(({ variant, opacity, state }) => {
         variant.visible = true;
-        applyBoundAnimation(variant, target);
-        applyVariantOpacity(variant, opacity, target);
+        applyBoundAnimation(variant, state);
+        applyVariantOpacity(variant, opacity, state);
+        applyVariantTransform(variant, state, elapsed, entryMotionState.justStarted || !wasShowingModel || !activeVariants.has(variant));
       });
       activeVariants = visibleSet;
-
-      const viewportScale = mount.clientWidth < 620 ? 0.92 : 1;
-      const liveScale = target.scale * viewportScale * (1 + Math.sin(elapsed * 1.5) * 0.012);
-      const liveRotationX = target.pitch ?? 0;
-      const liveRotationY = target.rotate + elapsed * (target.spin ?? 0.26);
-      const liveRotationZ = (target.tilt ?? 0) + Math.sin(elapsed * 0.6) * (target.floatTilt ?? 0.055);
-
-      if (entryMotionState.justStarted || !wasShowingModel) {
-        modelWrap.position.set(target.x, target.y, target.z);
-        modelWrap.scale.setScalar(liveScale);
-        modelWrap.rotation.set(liveRotationX, liveRotationY, liveRotationZ);
-        entryMotionState.justStarted = false;
-      } else {
-        modelWrap.position.x = lerp(modelWrap.position.x, target.x, 0.06);
-        modelWrap.position.y = lerp(modelWrap.position.y, target.y, 0.06);
-        modelWrap.position.z = lerp(modelWrap.position.z, target.z, 0.06);
-        modelWrap.scale.setScalar(lerp(modelWrap.scale.x, liveScale, 0.06));
-        modelWrap.rotation.x = lerp(modelWrap.rotation.x, liveRotationX, 0.05);
-        modelWrap.rotation.y = lerp(modelWrap.rotation.y, liveRotationY, 0.05);
-        modelWrap.rotation.z = lerp(modelWrap.rotation.z, liveRotationZ, 0.05);
-      }
+      entryMotionState.justStarted = false;
 
       renderer.render(scene, camera);
       wasShowingModel = true;
