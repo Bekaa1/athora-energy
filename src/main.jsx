@@ -57,6 +57,7 @@ const sections = [
       scene: 3,
       opacity: 1,
       asset: 'screen1',
+      assetSwitchAt: 1.01,
       clipProgress: 1,
       spin: 0,
       floatTilt: 0.01,
@@ -83,8 +84,9 @@ const sections = [
           pitch: -0.4,
           scene: 3,
           opacity: 1,
-          asset: 'screen2Blue',
-          clipProgress: 0,
+          asset: 'screen1',
+          assetSwitchAt: 0.03,
+          clipProgress: 1,
           spin: 0,
           floatTilt: 0.01,
         },
@@ -92,16 +94,17 @@ const sections = [
       {
         theme: 'orange',
         modelState: {
-          x: 1.94,
-          y: -0.92,
+          x: 0.14,
+          y: -0.32,
           z: 0,
-          scale: 1.38,
+          scale: 1.78,
           rotate: -0.64,
           tilt: -0.42,
           pitch: -0.4,
           scene: 3,
           opacity: 1,
           asset: 'screen2Orange',
+          assetSwitchAt: 0.03,
           clipProgress: 0,
           spin: 0,
           floatTilt: 0.01,
@@ -110,16 +113,17 @@ const sections = [
       {
         theme: 'green',
         modelState: {
-          x: 1.34,
-          y: -0.92,
+          x: -0.14,
+          y: 0.82,
           z: 0,
-          scale: 1.38,
+          scale: 2,
           rotate: -0.64,
           tilt: -0.42,
           pitch: -0.4,
           scene: 3,
           opacity: 1,
           asset: 'screen2Green',
+          assetSwitchAt: 0.03,
           clipProgress: 0,
           spin: 0,
           floatTilt: 0.01,
@@ -128,10 +132,10 @@ const sections = [
       {
         theme: 'green',
         modelState: {
-          x: 1.34,
-          y: -0.92,
+          x: 0.14,
+          y: -0.32,
           z: 0,
-          scale: 1.38,
+          scale: 1.78,
           rotate: -0.64,
           tilt: -0.42,
           pitch: -0.4,
@@ -155,8 +159,8 @@ const sections = [
       pitch: -0.4,
       scene: 3,
       opacity: 1,
-      asset: 'screen2Blue',
-      clipProgress: 0,
+      asset: 'screen1',
+      clipProgress: 1,
       spin: 0,
       floatTilt: 0.01,
     },
@@ -233,21 +237,83 @@ const sections = [
       },
     ],
     valueSequence: ['10', '9', '8', '7', '6', '5', '4'],
+    modelTransitionStart: 1,
     modelState: { x: -1.85, y: 0.08, z: 0, scale: 0.88, rotate: -0.75, scene: 3, opacity: 0 },
   },
   {
     id: 'fruit',
-    type: 'benefits',
-    items: ['Real Fruit', 'zero added sugar', '40 Calories'],
+    type: 'nutrition',
+    variant: 'fruit',
+    stackItems: [
+      { id: 'real-fruit', label: 'Real Fruit' },
+      { id: 'zero-added', label: ['zero added', 'sugar'], active: true },
+      { id: 'calories', label: '40 Calories' },
+    ],
     theme: 'blue',
-    modelState: { x: -2.4, y: -0.05, z: 0, scale: 1.05, rotate: -0.55, scene: 3, opacity: 0 },
+    modelState: {
+      x: -2.32,
+      y: -0.06,
+      z: 0,
+      scale: 0.9,
+      rotate: 0,
+      tilt: 0,
+      pitch: 0,
+      scene: 3,
+      opacity: 1,
+      asset: 'screen4Divided',
+      clipProgress: 0,
+      spin: 0,
+      floatTilt: 0,
+      entryMotion: {
+        id: 'fruit-can-from-left',
+        duration: 1.05,
+        from: {
+          x: -5.35,
+          y: -0.08,
+          z: 0,
+          scale: 0.9,
+          rotate: -2.45,
+          tilt: -0.16,
+          pitch: 0.04,
+          opacity: 1,
+        },
+      },
+      exitMotion: {
+        range: 0.34,
+        to: {
+          x: -5.35,
+          y: -0.08,
+          z: 0,
+          scale: 0.9,
+          rotate: -2.45,
+          tilt: -0.16,
+          pitch: 0.04,
+          opacity: 1,
+        },
+      },
+    },
   },
   {
     id: 'electrolytes',
-    type: 'split-claim',
-    headline: '1,000+ mg electrolytes',
+    type: 'nutrition',
+    variant: 'electrolytes',
+    headlineLines: ['1,000+ MG', 'ELECTROLYTES'],
     theme: 'blue',
-    modelState: { x: 2.35, y: -0.1, z: 0, scale: 1.14, rotate: 0.55, scene: 3, opacity: 0 },
+    modelState: {
+      x: 2.92,
+      y: -1.12,
+      z: 0,
+      scale: 1.1,
+      rotate: -0.5,
+      tilt: 0.1,
+      pitch: 0.3,
+      scene: 3,
+      opacity: 1,
+      asset: 'screen4Divided',
+      clipProgress: 1,
+      spin: 0,
+      floatTilt: 0,
+    },
   },
   {
     id: 'simplicity',
@@ -409,6 +475,12 @@ function lerp(start, end, t) {
 }
 
 function hexToRgb(hex) {
+  if (hex.startsWith('rgb')) {
+    const [r = 0, g = 0, b = 0] = hex.match(/\d+(\.\d+)?/g)?.map(Number) || [];
+
+    return { r, g, b };
+  }
+
   const normalized = hex.replace('#', '');
   const value = Number.parseInt(normalized, 16);
 
@@ -465,6 +537,8 @@ function getSystemsSequenceProgress(section, sectionProgress) {
 }
 
 function interpolateState(a, b, t) {
+  const assetSwitchAt = a.assetSwitchAt ?? 0.5;
+
   return {
     x: lerp(a.x, b.x, t),
     y: lerp(a.y, b.y, t),
@@ -478,8 +552,10 @@ function interpolateState(a, b, t) {
     floatTilt: lerp(a.floatTilt ?? 0.055, b.floatTilt ?? 0.055, t),
     clipProgress: lerp(a.clipProgress ?? 0, b.clipProgress ?? 0, t),
     flavorProgress: lerp(a.flavorProgress ?? 0, b.flavorProgress ?? a.flavorProgress ?? 0, t),
-    asset: t < 0.5 ? a.asset : b.asset,
+    asset: t < assetSwitchAt ? a.asset : b.asset,
     scene: t < 0.5 ? a.scene : b.scene,
+    entryMotion: a.entryMotion,
+    exitMotion: a.exitMotion,
   };
 }
 
@@ -488,12 +564,14 @@ function useScrollModelState() {
     progress: 0,
     activeIndex: 0,
     sectionProgress: 0,
+    rawSectionProgress: 0,
     showNav: false,
     modelState: sections[0].modelState,
   });
 
   useEffect(() => {
     let frame = 0;
+    let lastScrollY = window.scrollY;
 
     const getDocumentTop = (element) => window.scrollY + element.getBoundingClientRect().top;
 
@@ -525,6 +603,8 @@ function useScrollModelState() {
         if (!metrics.length) return;
 
         const scrollY = window.scrollY;
+        const scrollDirection = scrollY < lastScrollY ? 'up' : scrollY > lastScrollY ? 'down' : 'still';
+        lastScrollY = scrollY;
         let activeIndex = metrics.findIndex((metric, index) => {
           const nextTop = metrics[index + 1]?.top ?? Number.POSITIVE_INFINITY;
           return scrollY >= metric.top - 1 && scrollY < nextTop - 1;
@@ -539,8 +619,9 @@ function useScrollModelState() {
         const sectionEnd = nextMetric?.top > currentMetric.top ? nextMetric.top : currentMetric.top + currentMetric.height;
         const currentSection = sections[activeIndex];
         const rawSectionProgress = clamp((scrollY - currentMetric.top) / Math.max(sectionEnd - currentMetric.top, 1), 0, 1);
+        const systemsProgressRange = Math.max((currentSection.items?.length || 1) - 1, 1) * sectionHeight;
         const sectionProgress = currentSection.systemsSequence?.length
-          ? clamp((scrollY - currentMetric.top) / Math.max(currentMetric.height - sectionHeight, 1), 0, 1)
+          ? clamp((scrollY - currentMetric.top) / Math.max(systemsProgressRange, 1), 0, 1)
           : rawSectionProgress;
         const current = currentSection.modelState;
         const next = sections[Math.min(activeIndex + 1, sections.length - 1)].modelState;
@@ -557,7 +638,9 @@ function useScrollModelState() {
           const sequenceProgress = getSystemsSequenceProgress(currentSection, sectionProgress);
           const from = sequenceProgress.sequence[sequenceProgress.fromIndex]?.modelState || current;
           const to = sequenceProgress.sequence[sequenceProgress.toIndex]?.modelState || from;
-          const sequenceModelProgress = smoothstep(0, 1, sequenceProgress.stepProgress);
+          const sequenceModelProgress = currentSection.wordStepScroll
+            ? smoothstep(0.42, 0.78, sequenceProgress.stepProgress)
+            : smoothstep(0, 1, sequenceProgress.stepProgress);
 
           interpolatedModelState = interpolateState(from, to, sequenceModelProgress);
         }
@@ -576,10 +659,32 @@ function useScrollModelState() {
           };
         }
 
+        if (current.exitMotion && scrollDirection === 'up') {
+          const exitRange = Math.max(current.exitMotion.range ?? 0.28, 0.001);
+          const visibleProgress = smoothstep(0, 1, clamp(rawSectionProgress / exitRange, 0, 1));
+          if (visibleProgress < 1) {
+            const exitTo = current.exitMotion.to || {};
+
+            interpolatedModelState = {
+              ...interpolatedModelState,
+              x: lerp(exitTo.x ?? interpolatedModelState.x, interpolatedModelState.x, visibleProgress),
+              y: lerp(exitTo.y ?? interpolatedModelState.y, interpolatedModelState.y, visibleProgress),
+              z: lerp(exitTo.z ?? interpolatedModelState.z, interpolatedModelState.z, visibleProgress),
+              scale: lerp(exitTo.scale ?? interpolatedModelState.scale, interpolatedModelState.scale, visibleProgress),
+              rotate: lerp(exitTo.rotate ?? interpolatedModelState.rotate ?? 0, interpolatedModelState.rotate ?? 0, visibleProgress),
+              tilt: lerp(exitTo.tilt ?? interpolatedModelState.tilt ?? 0, interpolatedModelState.tilt ?? 0, visibleProgress),
+              pitch: lerp(exitTo.pitch ?? interpolatedModelState.pitch ?? 0, interpolatedModelState.pitch ?? 0, visibleProgress),
+              opacity: lerp(exitTo.opacity ?? interpolatedModelState.opacity, interpolatedModelState.opacity, visibleProgress),
+              entryMotion: undefined,
+            };
+          }
+        }
+
         setState({
           progress: clamp(scrollY / totalScrollable, 0, 1),
           activeIndex,
           sectionProgress,
+          rawSectionProgress,
           showNav,
           modelState: interpolatedModelState,
         });
@@ -761,6 +866,25 @@ function normalizeObject(object, targetHeight = 3.35) {
   }
 }
 
+function normalizeObjectAfterScale(object, targetHeight = 3.35) {
+  const box = new THREE.Box3().setFromObject(object);
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  box.getSize(size);
+  box.getCenter(center);
+
+  const largestAxis = Math.max(size.x, size.y, size.z);
+  if (largestAxis <= 0) return;
+
+  const nextScale = targetHeight / largestAxis;
+  object.scale.setScalar(nextScale);
+  object.position.set(
+    object.position.x - center.x * nextScale,
+    object.position.y - center.y * nextScale,
+    object.position.z - center.z * nextScale
+  );
+}
+
 function AthoraScene({ modelState, hidden = false }) {
   const mountRef = useRef(null);
   const modelStateRef = useRef(modelState);
@@ -779,7 +903,7 @@ function AthoraScene({ modelState, hidden = false }) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.25;
+    renderer.toneMappingExposure = 0.35;
     renderer.setClearColor(0x000000, 0);
     mount.appendChild(renderer.domElement);
 
@@ -803,7 +927,8 @@ function AthoraScene({ modelState, hidden = false }) {
     const sceneVariants = [];
     const assetVariants = { fallback };
     const animationMixers = new Map();
-    let activeVariant = null;
+    const warmupHandles = new Set();
+    let activeVariants = new Set();
 
     const loader = new GLTFLoader();
     const getFlavorIndex = (mesh, materials) => {
@@ -835,17 +960,17 @@ function AthoraScene({ modelState, hidden = false }) {
       if (isAluminum) {
         material.color?.set?.(0xe7eef0);
         if ('metalness' in material) material.metalness = 1;
-        if ('roughness' in material) material.roughness = 0.14;
+        if ('roughness' in material) material.roughness = 0.94;
         if ('envMapIntensity' in material) material.envMapIntensity = 2.75;
       }
 
       if (isCanBody) {
         material.color?.set?.(0xffffff);
-        if ('metalness' in material) material.metalness = Math.max(material.metalness ?? 0, 0.14);
-        if ('roughness' in material) material.roughness = Math.min(material.roughness ?? 0.54, 0.28);
-        if ('envMapIntensity' in material) material.envMapIntensity = 1.78;
-        if ('clearcoat' in material) material.clearcoat = 0.68;
-        if ('clearcoatRoughness' in material) material.clearcoatRoughness = 0.11;
+        if ('metalness' in material) material.metalness = 0.45//Math.max(material.metalness ?? 0, 0.14);
+        if ('roughness' in material) material.roughness = 0.8//Math.min(material.roughness ?? 0.54, 0.28);
+        if ('envMapIntensity' in material) material.envMapIntensity = 1.5;
+        if ('clearcoat' in material) material.clearcoat = 0.5;
+        if ('clearcoatRoughness' in material) material.clearcoatRoughness = 0.09;
         if ('reflectivity' in material) material.reflectivity = 0.62;
       }
 
@@ -875,7 +1000,11 @@ function AthoraScene({ modelState, hidden = false }) {
           }
         }
       });
-      normalizeObject(clone, targetHeight);
+      if (options.normalizeAfterScale) {
+        normalizeObjectAfterScale(clone, targetHeight);
+      } else {
+        normalizeObject(clone, targetHeight);
+      }
       clone.visible = false;
       modelWrap.add(clone);
       return clone;
@@ -884,9 +1013,26 @@ function AthoraScene({ modelState, hidden = false }) {
     const bindClipsToScroll = (object, clips = []) => {
       if (!clips.length) return;
 
+      const nodeNames = new Set();
+      object.traverse((child) => {
+        if (child.name) nodeNames.add(child.name);
+      });
+      const validClips = clips
+        .map((clip) => {
+          const validTracks = clip.tracks.filter((track) => {
+            const targetName = track.name.split('.')[0];
+            return !targetName || nodeNames.has(targetName);
+          });
+
+          return validTracks.length ? new THREE.AnimationClip(clip.name, clip.duration, validTracks) : null;
+        })
+        .filter(Boolean);
+
+      if (!validClips.length) return;
+
       const mixer = new THREE.AnimationMixer(object);
       let duration = 0;
-      clips.forEach((clip) => {
+      validClips.forEach((clip) => {
         duration = Math.max(duration, clip.duration || 0);
         const action = mixer.clipAction(clip);
         action.reset();
@@ -894,6 +1040,109 @@ function AthoraScene({ modelState, hidden = false }) {
       });
       mixer.setTime(0);
       animationMixers.set(object, { mixer, duration });
+    };
+
+    const resolveVariant = (asset, sceneIndex) => (asset ? assetVariants[asset] : sceneVariants[sceneIndex]);
+
+    const applyVariantOpacity = (variant, variantOpacity, targetState) => {
+      variant.traverse((child) => {
+        if (child.isMesh && child.material) {
+          const materials = Array.isArray(child.material) ? child.material : [child.material];
+          let flavorOpacity = 1;
+          if (Number.isFinite(targetState.flavorProgress) && child.userData.flavorIndex !== undefined) {
+            const rawFlavorOpacity = clamp(1 - Math.abs(child.userData.flavorIndex - targetState.flavorProgress), 0, 1);
+            flavorOpacity = smoothstep(0, 1, rawFlavorOpacity);
+          }
+
+          materials.forEach((material) => {
+            if (material.userData.baseOpacity === undefined) {
+              material.userData.baseOpacity = material.opacity ?? 1;
+            }
+            material.opacity = material.userData.baseOpacity * variantOpacity * flavorOpacity;
+            material.transparent = material.transparent || material.opacity < 1;
+          });
+        }
+      });
+    };
+
+    const applyBoundAnimation = (variant, targetState) => {
+      const boundAnimation = animationMixers.get(variant);
+      if (!boundAnimation) return;
+
+      boundAnimation.mixer.setTime(boundAnimation.duration * clamp(targetState.clipProgress ?? 0, 0, 1));
+      variant.traverse((child) => {
+        const offset = child.userData.lineupOffset;
+        if (offset) {
+          if (!child.userData.lineupBasePosition) {
+            child.userData.lineupBasePosition = child.position.clone();
+          }
+          const basePosition = child.userData.lineupBasePosition;
+          child.position.set(
+            basePosition.x + offset.x,
+            basePosition.y + offset.y,
+            basePosition.z + offset.z
+          );
+        }
+      });
+    };
+
+    const warmVariant = (variant) => {
+      if (!variant) return;
+
+      const previousWrapVisible = modelWrap.visible;
+      const previousVariantVisible = variant.visible;
+      const materialStates = [];
+
+      variant.traverse((child) => {
+        if (!child.isMesh || !child.material) return;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((material) => {
+          materialStates.push({
+            material,
+            colorWrite: material.colorWrite,
+            depthWrite: material.depthWrite,
+          });
+          material.colorWrite = false;
+          material.depthWrite = false;
+        });
+      });
+
+      modelWrap.visible = true;
+      variant.visible = true;
+
+      try {
+        renderer.compile(scene, camera);
+        renderer.render(scene, camera);
+      } finally {
+        materialStates.forEach(({ material, colorWrite, depthWrite }) => {
+          material.colorWrite = colorWrite;
+          material.depthWrite = depthWrite;
+        });
+        variant.visible = previousVariantVisible;
+        modelWrap.visible = previousWrapVisible;
+      }
+    };
+
+    const scheduleWarmVariant = (variant, delay = 160) => {
+      let handle;
+      const run = () => {
+        if (handle) warmupHandles.delete(handle);
+        warmVariant(variant);
+      };
+
+      if ('requestIdleCallback' in window) {
+        handle = {
+          type: 'idle',
+          id: window.requestIdleCallback(run, { timeout: delay + 800 }),
+        };
+      } else {
+        handle = {
+          type: 'timeout',
+          id: window.setTimeout(run, delay),
+        };
+      }
+
+      warmupHandles.add(handle);
     };
 
     loader.load(
@@ -911,6 +1160,7 @@ function AthoraScene({ modelState, hidden = false }) {
         helpers.forEach((child) => child.parent?.remove(child));
         assetVariants.screen1 = prepareClone(clone, 3.35);
         bindClipsToScroll(assetVariants.screen1, gltf.animations);
+        scheduleWarmVariant(assetVariants.screen1);
       },
       undefined,
       () => {
@@ -940,13 +1190,13 @@ function AthoraScene({ modelState, hidden = false }) {
           return variant;
         };
 
-        assetVariants.screen2Blue = createFlavorVariant(0);
         assetVariants.screen2Orange = createFlavorVariant(1);
         assetVariants.screen2Green = createFlavorVariant(2);
+        scheduleWarmVariant(assetVariants.screen2Orange, 260);
+        scheduleWarmVariant(assetVariants.screen2Green, 360);
       },
       undefined,
       () => {
-        assetVariants.screen2Blue = undefined;
         assetVariants.screen2Orange = undefined;
         assetVariants.screen2Green = undefined;
       }
@@ -977,10 +1227,25 @@ function AthoraScene({ modelState, hidden = false }) {
         deskParts.forEach((child) => child.parent?.remove(child));
         assetVariants.screen3Desk = prepareClone(clone, 3.7);
         bindClipsToScroll(assetVariants.screen3Desk, gltf.animations);
+        scheduleWarmVariant(assetVariants.screen3Desk, 520);
       },
       undefined,
       () => {
         assetVariants.screen3Desk = undefined;
+      }
+    );
+
+    loader.load(
+      '/blender-files/screens/4screen-divided-by-two.glb',
+      (gltf) => {
+        const clone = gltf.scene.clone(true);
+        assetVariants.screen4Divided = prepareClone(clone, 3.6, { normalizeAfterScale: true });
+        bindClipsToScroll(assetVariants.screen4Divided, gltf.animations);
+        scheduleWarmVariant(assetVariants.screen4Divided, 620);
+      },
+      undefined,
+      () => {
+        assetVariants.screen4Divided = undefined;
       }
     );
 
@@ -1016,84 +1281,115 @@ function AthoraScene({ modelState, hidden = false }) {
 
     const clock = new THREE.Clock();
     let raf = 0;
+    let wasShowingModel = false;
+    const entryMotionState = {
+      id: null,
+      startedAt: 0,
+      justStarted: false,
+    };
 
     const animate = () => {
       clock.getDelta();
       const elapsed = clock.elapsedTime;
-      const target = modelStateRef.current;
+      let target = modelStateRef.current;
 
-      const wantedVariant = target.asset ? assetVariants[target.asset] : sceneVariants[target.scene];
-      const shouldShowModel = target.opacity > 0.001 && Boolean(wantedVariant);
+      const entryMotion = target.entryMotion;
+      if (entryMotion) {
+        const motionId = entryMotion.id || `${target.asset || target.scene}-entry`;
+        if (entryMotionState.id !== motionId) {
+          entryMotionState.id = motionId;
+          entryMotionState.startedAt = elapsed;
+          entryMotionState.justStarted = true;
+        }
+
+        const entryProgress = smoothstep(
+          0,
+          1,
+          clamp((elapsed - entryMotionState.startedAt) / Math.max(entryMotion.duration ?? 0.9, 0.001), 0, 1)
+        );
+        if (entryProgress < 1) {
+          const from = entryMotion.from || {};
+          target = {
+            ...target,
+            x: lerp(from.x ?? target.x, target.x, entryProgress),
+            y: lerp(from.y ?? target.y, target.y, entryProgress),
+            z: lerp(from.z ?? target.z, target.z, entryProgress),
+            scale: lerp(from.scale ?? target.scale, target.scale, entryProgress),
+            rotate: lerp(from.rotate ?? target.rotate ?? 0, target.rotate ?? 0, entryProgress),
+            tilt: lerp(from.tilt ?? target.tilt ?? 0, target.tilt ?? 0, entryProgress),
+            pitch: lerp(from.pitch ?? target.pitch ?? 0, target.pitch ?? 0, entryProgress),
+            opacity: lerp(from.opacity ?? target.opacity, target.opacity, entryProgress),
+          };
+        }
+      } else {
+        entryMotionState.id = null;
+        entryMotionState.justStarted = false;
+      }
+
+      const assetBlend = clamp(target.assetBlend ?? 1, 0, 1);
+      const fromVariant = resolveVariant(target.fromAsset ?? target.asset, target.fromScene ?? target.scene);
+      const toVariant = resolveVariant(target.toAsset ?? target.asset, target.toScene ?? target.scene);
+      const wantedVariant = resolveVariant(target.asset, target.scene);
+      const visibleModels = [];
+
+      if (fromVariant && toVariant && fromVariant !== toVariant && assetBlend < 0.999) {
+        const fromOpacity = target.opacity * (1 - assetBlend);
+        const toOpacity = target.opacity * assetBlend;
+
+        if (fromOpacity > 0.001) visibleModels.push({ variant: fromVariant, opacity: fromOpacity });
+        if (toOpacity > 0.001) visibleModels.push({ variant: toVariant, opacity: toOpacity });
+      } else if (wantedVariant && target.opacity > 0.001) {
+        visibleModels.push({ variant: wantedVariant, opacity: target.opacity });
+      }
+
+      const visibleSet = new Set(visibleModels.map((model) => model.variant));
+      const shouldShowModel = visibleModels.length > 0;
       modelWrap.visible = shouldShowModel;
 
       if (!shouldShowModel) {
-        if (activeVariant) {
-          activeVariant.visible = false;
-          activeVariant = null;
-        }
+        wasShowingModel = false;
+        activeVariants.forEach((variant) => {
+          variant.visible = false;
+        });
+        activeVariants = new Set();
         renderer.render(scene, camera);
         raf = requestAnimationFrame(animate);
         return;
       }
 
-      const boundAnimation = animationMixers.get(wantedVariant);
-      if (boundAnimation) {
-        boundAnimation.mixer.setTime(boundAnimation.duration * clamp(target.clipProgress ?? 0, 0, 1));
-        wantedVariant.traverse((child) => {
-          const offset = child.userData.lineupOffset;
-          if (offset) {
-            if (!child.userData.lineupBasePosition) {
-              child.userData.lineupBasePosition = child.position.clone();
-            }
-            const basePosition = child.userData.lineupBasePosition;
-            child.position.set(
-              basePosition.x + offset.x,
-              basePosition.y + offset.y,
-              basePosition.z + offset.z
-            );
-          }
-        });
-      }
-      if (wantedVariant !== activeVariant) {
-        if (activeVariant) activeVariant.visible = false;
-        wantedVariant.visible = true;
-        activeVariant = wantedVariant;
-      }
+      activeVariants.forEach((variant) => {
+        if (!visibleSet.has(variant)) variant.visible = false;
+      });
+      visibleModels.forEach(({ variant, opacity }) => {
+        variant.visible = true;
+        applyBoundAnimation(variant, target);
+        applyVariantOpacity(variant, opacity, target);
+      });
+      activeVariants = visibleSet;
 
-      modelWrap.position.x = lerp(modelWrap.position.x, target.x, 0.06);
-      modelWrap.position.y = lerp(modelWrap.position.y, target.y, 0.06);
-      modelWrap.position.z = lerp(modelWrap.position.z, target.z, 0.06);
       const viewportScale = mount.clientWidth < 620 ? 0.92 : 1;
       const liveScale = target.scale * viewportScale * (1 + Math.sin(elapsed * 1.5) * 0.012);
-      modelWrap.scale.setScalar(lerp(modelWrap.scale.x, liveScale, 0.06));
-      modelWrap.rotation.x = lerp(modelWrap.rotation.x, target.pitch ?? 0, 0.05);
-      modelWrap.rotation.y = lerp(modelWrap.rotation.y, target.rotate + elapsed * (target.spin ?? 0.26), 0.05);
-      modelWrap.rotation.z = lerp(
-        modelWrap.rotation.z,
-        (target.tilt ?? 0) + Math.sin(elapsed * 0.6) * (target.floatTilt ?? 0.055),
-        0.05
-      );
+      const liveRotationX = target.pitch ?? 0;
+      const liveRotationY = target.rotate + elapsed * (target.spin ?? 0.26);
+      const liveRotationZ = (target.tilt ?? 0) + Math.sin(elapsed * 0.6) * (target.floatTilt ?? 0.055);
 
-      modelWrap.traverse((child) => {
-        if (child.isMesh && child.material) {
-          const materials = Array.isArray(child.material) ? child.material : [child.material];
-          let flavorOpacity = 1;
-          if (Number.isFinite(target.flavorProgress) && child.userData.flavorIndex !== undefined) {
-            const rawFlavorOpacity = clamp(1 - Math.abs(child.userData.flavorIndex - target.flavorProgress), 0, 1);
-            flavorOpacity = smoothstep(0, 1, rawFlavorOpacity);
-          }
-
-          materials.forEach((material) => {
-            if (material.userData.baseOpacity === undefined) {
-              material.userData.baseOpacity = material.opacity ?? 1;
-            }
-            material.opacity = material.userData.baseOpacity * target.opacity * flavorOpacity;
-            material.transparent = material.transparent || material.opacity < 1;
-          });
-        }
-      });
+      if (entryMotionState.justStarted || !wasShowingModel) {
+        modelWrap.position.set(target.x, target.y, target.z);
+        modelWrap.scale.setScalar(liveScale);
+        modelWrap.rotation.set(liveRotationX, liveRotationY, liveRotationZ);
+        entryMotionState.justStarted = false;
+      } else {
+        modelWrap.position.x = lerp(modelWrap.position.x, target.x, 0.06);
+        modelWrap.position.y = lerp(modelWrap.position.y, target.y, 0.06);
+        modelWrap.position.z = lerp(modelWrap.position.z, target.z, 0.06);
+        modelWrap.scale.setScalar(lerp(modelWrap.scale.x, liveScale, 0.06));
+        modelWrap.rotation.x = lerp(modelWrap.rotation.x, liveRotationX, 0.05);
+        modelWrap.rotation.y = lerp(modelWrap.rotation.y, liveRotationY, 0.05);
+        modelWrap.rotation.z = lerp(modelWrap.rotation.z, liveRotationZ, 0.05);
+      }
 
       renderer.render(scene, camera);
+      wasShowingModel = true;
       raf = requestAnimationFrame(animate);
     };
 
@@ -1101,6 +1397,13 @@ function AthoraScene({ modelState, hidden = false }) {
 
     return () => {
       cancelAnimationFrame(raf);
+      warmupHandles.forEach((handle) => {
+        if (handle.type === 'idle' && 'cancelIdleCallback' in window) {
+          window.cancelIdleCallback(handle.id);
+        } else {
+          window.clearTimeout(handle.id);
+        }
+      });
       window.removeEventListener('resize', resize);
       environmentTexture.dispose();
       renderer.dispose();
@@ -1314,28 +1617,65 @@ function Navigation({ activeIndex = 0, showNav, preloaderLocked, legal = false }
 }
 
 function InstallSection({ section, onIntroReveal }) {
-  const [progress, setProgress] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
+  const meterRef = useRef(null);
+  const progressLabelRef = useRef(null);
   const videoRef = useRef(null);
 
   useEffect(() => {
     let raf = 0;
     const startedAt = performance.now();
+    let lastLabelProgress = -1;
+    let completed = false;
+
+    const renderProgress = (progressValue) => {
+      const progressPercent = progressValue * 100;
+      const nextLabelProgress = Math.round(progressPercent);
+      const meter = meterRef.current;
+      const label = progressLabelRef.current;
+
+      if (meter) {
+        meter.style.setProperty('--progress-ratio', progressValue.toFixed(5));
+        meter.setAttribute('aria-label', `Installation progress ${nextLabelProgress} percent`);
+      }
+
+      if (label) {
+        const meterWidth = meter?.clientWidth || 0;
+        const labelWidth = label.offsetWidth || 76;
+        const travel = Math.max(meterWidth - labelWidth, 0);
+
+        label.style.transform = `translate3d(${(travel * progressValue).toFixed(2)}px, -50%, 0)`;
+
+        if (nextLabelProgress !== lastLabelProgress) {
+          label.textContent = `${nextLabelProgress}%`;
+          lastLabelProgress = nextLabelProgress;
+        }
+      }
+    };
 
     const tick = (now) => {
       const elapsed = now - startedAt;
       const progressValue = clamp(elapsed / PRELOADER_DURATION_MS, 0, 1);
-      setProgress(Math.round(progressValue * 100));
+
+      renderProgress(progressValue);
+
+      if (progressValue >= 1 && !completed) {
+        completed = true;
+        setIsComplete(true);
+      }
+
       if (elapsed < PRELOADER_DURATION_MS) {
         raf = requestAnimationFrame(tick);
       }
     };
 
+    renderProgress(0);
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, []);
 
   useEffect(() => {
-    if (progress < 100) return undefined;
+    if (!isComplete) return undefined;
 
     const video = videoRef.current;
     if (video) {
@@ -1351,7 +1691,7 @@ function InstallSection({ section, onIntroReveal }) {
     }, PRELOADER_COMPLETE_HOLD_MS);
 
     return () => window.clearTimeout(timer);
-  }, [onIntroReveal, progress]);
+  }, [isComplete, onIntroReveal]);
 
   return (
     <section className={`panel install-panel ${SECTION_THEMES[section.theme].className}`} id={section.id}>
@@ -1367,12 +1707,13 @@ function InstallSection({ section, onIntroReveal }) {
       />
       <AthoraLogo large />
       <div
+        ref={meterRef}
         className="install-meter"
-        aria-label={`Installation progress ${progress} percent`}
-        style={{ '--progress': `${progress}%` }}
+        aria-label="Installation progress 0 percent"
+        style={{ '--progress-ratio': '0' }}
       >
         <div className="install-fill" />
-        <strong>{progress}%</strong>
+        <strong ref={progressLabelRef}>0%</strong>
       </div>
       <p className="install-copy">{section.subcopy}</p>
     </section>
@@ -1386,7 +1727,7 @@ function PreloaderTransitionOverlay({ phase }) {
     <div className={`intro-reveal-overlay intro-reveal-overlay-${phase}`} aria-hidden="true">
       <div className="intro-reveal-ui">
         <AthoraLogo large />
-        <div className="install-meter" aria-label="Installation progress 100 percent" style={{ '--progress': '100%' }}>
+        <div className="install-meter install-meter-complete" aria-label="Installation progress 100 percent" style={{ '--progress-ratio': '1' }}>
           <div className="install-fill" />
           <strong>100%</strong>
         </div>
@@ -1856,6 +2197,43 @@ function PriceStackSection({ section }) {
   );
 }
 
+function NutritionSection({ section }) {
+  const isFruit = section.variant === 'fruit';
+
+  return (
+    <section
+      className={`panel nutrition-panel nutrition-panel-${section.variant} ${SECTION_THEMES[section.theme].className}`}
+      id={section.id}
+    >
+      {isFruit ? (
+        <div className="nutrition-stack-copy" aria-label="Real Fruit zero added sugar 40 Calories">
+          {section.stackItems.map((item, index) => {
+            const lines = Array.isArray(item.label) ? item.label : [item.label];
+
+            return (
+              <div
+                className={`nutrition-stack-word ${item.active ? 'nutrition-stack-word-active' : ''} nutrition-stack-word-${index}`}
+                key={item.id}
+              >
+                {lines.map((line) => (
+                  <span key={`${item.id}-${line}`}>{line}</span>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <h2 className="nutrition-electrolytes-title">
+          {section.headlineLines.map((line) => (
+            <span key={line}>{line}</span>
+          ))}
+        </h2>
+      )}
+      <ScrollDown />
+    </section>
+  );
+}
+
 function BenefitsSection({ section }) {
   return (
     <section className={`panel benefits-panel figma-detail-panel figma-benefits-panel ${SECTION_THEMES[section.theme].className}`} id={section.id}>
@@ -2026,6 +2404,8 @@ function SectionRenderer({ section, onIntroReveal, isActive }) {
       return <PriceSection section={section} />;
     case 'price-stack':
       return <PriceStackSection section={section} />;
+    case 'nutrition':
+      return <NutritionSection section={section} />;
     case 'benefits':
       return <BenefitsSection section={section} />;
     case 'split-claim':
@@ -2040,7 +2420,7 @@ function SectionRenderer({ section, onIntroReveal, isActive }) {
 function LandingApp() {
   useStartAtPreloaderOnPageLoad();
 
-  const { activeIndex, sectionProgress, modelState, showNav } = useScrollModelState();
+  const { activeIndex, sectionProgress, rawSectionProgress, modelState, showNav } = useScrollModelState();
   const activeSection = sections[activeIndex];
   const systemsTintOpacity = useMemo(() => {
     const currentSection = sections[activeIndex];
@@ -2052,8 +2432,12 @@ function LandingApp() {
       const fromTheme = sequenceProgress.sequence[sequenceProgress.fromIndex]?.theme || currentSection.theme;
       const toTheme = sequenceProgress.sequence[sequenceProgress.toIndex]?.theme || fromTheme;
       const isBlueStep = fromTheme === 'blue' && toTheme === 'blue';
+      const nextTheme = nextSection?.theme || 'blue';
+      const exitProgress =
+        nextSection && nextTheme === 'blue' && toTheme !== 'blue' ? smoothstep(0.76, 0.98, rawSectionProgress) : 0;
 
       if (isBlueStep) return 0;
+      if (exitProgress > 0) return lerp(0.86, 0, exitProgress);
       if (fromTheme === 'blue') {
         return smoothstep(0.18, 1, sequenceProgress.stepProgress) * 0.86;
       }
@@ -2066,7 +2450,7 @@ function LandingApp() {
     }
 
     return currentSection.theme === 'blue' ? 0 : 0.86;
-  }, [activeIndex, sectionProgress]);
+  }, [activeIndex, sectionProgress, rawSectionProgress]);
   const activeTheme = useMemo(() => {
     const currentSection = sections[activeIndex];
     const nextSection = sections[activeIndex + 1];
@@ -2076,8 +2460,11 @@ function LandingApp() {
       const sequenceProgress = getSystemsSequenceProgress(currentSection, sectionProgress);
       const fromTheme = SECTION_THEMES[sequenceProgress.sequence[sequenceProgress.fromIndex]?.theme || currentSection.theme];
       const toTheme = SECTION_THEMES[sequenceProgress.sequence[sequenceProgress.toIndex]?.theme || currentSection.theme];
+      const nextTheme = nextSection ? SECTION_THEMES[nextSection.theme] : null;
+      const sequenceTheme = mixTheme(fromTheme, toTheme, smoothstep(0, 1, sequenceProgress.stepProgress));
+      const exitProgress = nextTheme ? smoothstep(0.76, 0.98, rawSectionProgress) : 0;
 
-      return mixTheme(fromTheme, toTheme, smoothstep(0, 1, sequenceProgress.stepProgress));
+      return exitProgress > 0 ? mixTheme(sequenceTheme, nextTheme, exitProgress) : sequenceTheme;
     }
 
     if (currentSection?.type === 'systems' && nextSection?.type === 'systems') {
@@ -2086,7 +2473,7 @@ function LandingApp() {
     }
 
     return currentTheme;
-  }, [activeIndex, sectionProgress]);
+  }, [activeIndex, sectionProgress, rawSectionProgress]);
   const heroBerryOpacity = activeSection?.id === 'intro' ? 1 - smoothstep(0.14, 0.58, sectionProgress) : 0;
   const [preloaderLocked, setPreloaderLocked] = useState(false);
   const [introRevealPhase, setIntroRevealPhase] = useState('idle');
@@ -2180,7 +2567,14 @@ function LandingApp() {
       }}
     >
       <FixedHeroSequenceBackground visible={activeIndex === 1} berryOpacity={heroBerryOpacity} />
-      <FixedSystemsBackground visible={activeSection?.type === 'systems'} />
+      <FixedSystemsBackground
+        visible={
+          activeSection?.type === 'systems' ||
+          activeSection?.type === 'claim-stack' ||
+          activeSection?.type === 'price-stack' ||
+          activeSection?.type === 'nutrition'
+        }
+      />
       <AthoraScene modelState={modelState} hidden={hideSceneDuringIntroReveal} />
       <Navigation activeIndex={activeIndex} showNav={showNav} preloaderLocked={preloaderLocked} />
       <PreloaderTransitionOverlay phase={introRevealPhase} />
