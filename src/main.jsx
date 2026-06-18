@@ -1977,11 +1977,11 @@ function NavFrameGlass() {
         <mask id="nav-frame-mask" fill="white">
           <path d={NAV_FRAME_PATH} />
         </mask>
-        <path d={NAV_FRAME_PATH} fill="#1D1D1D" fillOpacity="0.14" style={{ mixBlendMode: 'plus-lighter' }} />
-        <path d={NAV_FRAME_PATH} fill="#1D1D1D" fillOpacity="0.08" style={{ mixBlendMode: 'color-burn' }} />
-        <path d={NAV_FRAME_PATH} fill="url(#nav-frame-bottom)" fillOpacity="0.28" style={{ mixBlendMode: 'plus-lighter' }} />
-        <path d={NAV_FRAME_PATH} fill="url(#nav-frame-top)" fillOpacity="0.12" style={{ mixBlendMode: 'plus-lighter' }} />
-        <path d={NAV_FRAME_STROKE_PATH} fill="white" fillOpacity="0.04" mask="url(#nav-frame-mask)" />
+        <path d={NAV_FRAME_PATH} fill="#1D1D1D" fillOpacity="0.08" style={{ mixBlendMode: 'plus-lighter' }} />
+        <path d={NAV_FRAME_PATH} fill="#1D1D1D" fillOpacity="0.035" style={{ mixBlendMode: 'color-burn' }} />
+        <path d={NAV_FRAME_PATH} fill="url(#nav-frame-bottom)" fillOpacity="0.16" style={{ mixBlendMode: 'plus-lighter' }} />
+        <path d={NAV_FRAME_PATH} fill="url(#nav-frame-top)" fillOpacity="0.065" style={{ mixBlendMode: 'plus-lighter' }} />
+        <path d={NAV_FRAME_STROKE_PATH} fill="white" fillOpacity="0.025" mask="url(#nav-frame-mask)" />
         <path d={NAV_FRAME_STROKE_PATH} fill="url(#nav-frame-stroke)" mask="url(#nav-frame-mask)" />
       </g>
       <defs>
@@ -2077,6 +2077,7 @@ function Navigation({ activeIndex = 0, showNav, preloaderLocked, legal = false }
           <span className="mobile-battery" />
         </span>
       </div>
+      <div className="nav-liquid-field" aria-hidden="true" />
       <NavFrameGlass />
       <ChromeDots homeHref={homeHref} />
       <a className="nav-mark" href={homeHref} aria-label="ATHORA home">
