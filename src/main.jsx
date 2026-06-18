@@ -193,6 +193,7 @@ const sections = [
     type: 'lineup',
     headline: 'ATHORA',
     theme: 'blue',
+    modelTransitionStart: 1,
     modelState: {
       x: 0,
       y: -0.2,
@@ -205,10 +206,12 @@ const sections = [
       opacity: 1,
       asset: 'screen3Desk',
       clipProgress: 0,
-      clipAutoplay: true,
-      clipSpeed: 0.65,
       spin: 0,
       floatTilt: 0,
+      clipIdleLoop: true,
+      clipIdleLoopStart: 1,
+      clipIdleLoopEnd: 12,
+      clipIdleLoopSpeed: 1.25,
     },
   },
   {
@@ -218,7 +221,29 @@ const sections = [
     headlineLines: ['NO PILLS', 'NO POWDERS'],
     figmaClaim: 'open-can',
     theme: 'blue',
-    modelState: { x: 0, y: 0, z: 0, scale: 1.12, rotate: 0.15, scene: 3, opacity: 0 },
+    modelTransitionStart: 0.88,
+    modelClipScroll: {
+      clipStart: 0.05,
+      clipEnd: 0.84,
+      startAt: 0,
+      endAt: 0.78,
+    },
+    modelState: {
+      x: 0,
+      y: -0.08,
+      z: 0,
+      scale: 1.18,
+      rotate: 0,
+      tilt: 0,
+      pitch: 1.14,
+      scene: 3,
+      opacity: 1,
+      asset: 'screen3Desk',
+      assetSwitchAt: 1.01,
+      clipProgress: 0.84,
+      spin: 0,
+      floatTilt: 0,
+    },
   },
   {
     id: 'ten-day',
@@ -240,7 +265,21 @@ const sections = [
     ],
     valueSequence: ['10', '9', '8', '7', '6', '5', '4'],
     modelTransitionStart: 1,
-    modelState: { x: -1.85, y: 0.08, z: 0, scale: 0.88, rotate: -0.75, scene: 3, opacity: 0 },
+    modelState: {
+      x: -2.15,
+      y: -0.06,
+      z: 0,
+      scale: 0.92,
+      rotate: -0.32,
+      tilt: -0.18,
+      pitch: 1.1,
+      scene: 3,
+      opacity: 0,
+      asset: 'screen3Desk',
+      clipProgress: 1,
+      spin: 0,
+      floatTilt: 0,
+    },
   },
   {
     id: 'fruit',
@@ -561,6 +600,10 @@ function interpolateState(a, b, t) {
     clipProgress: lerp(a.clipProgress ?? 0, b.clipProgress ?? 0, t),
     clipAutoplay: t < assetSwitchAt ? a.clipAutoplay : b.clipAutoplay,
     clipSpeed: t < assetSwitchAt ? a.clipSpeed : b.clipSpeed,
+    clipIdleLoop: t < assetSwitchAt ? a.clipIdleLoop : b.clipIdleLoop,
+    clipIdleLoopStart: t < assetSwitchAt ? a.clipIdleLoopStart : b.clipIdleLoopStart,
+    clipIdleLoopEnd: t < assetSwitchAt ? a.clipIdleLoopEnd : b.clipIdleLoopEnd,
+    clipIdleLoopSpeed: t < assetSwitchAt ? a.clipIdleLoopSpeed : b.clipIdleLoopSpeed,
     flavorProgress: lerp(a.flavorProgress ?? 0, b.flavorProgress ?? a.flavorProgress ?? 0, t),
     asset: t < assetSwitchAt ? a.asset : b.asset,
     scene: t < 0.5 ? a.scene : b.scene,
@@ -753,6 +796,21 @@ function useScrollModelState() {
             asset: current.asset,
             clipProgress: lerp(flavorConfig.clipStart, flavorConfig.clipEnd, flavorAmount),
             flavorProgress: rawFlavorProgress,
+          };
+        }
+
+        if (currentSection.modelClipScroll && rawSectionProgress < modelTransitionStart) {
+          const clipConfig = currentSection.modelClipScroll;
+          const clipAmount = smoothstep(
+            clipConfig.startAt ?? 0,
+            clipConfig.endAt ?? 1,
+            rawSectionProgress
+          );
+          interpolatedModelState = {
+            ...interpolatedModelState,
+            asset: current.asset,
+            clipIdleLoop: false,
+            clipProgress: lerp(clipConfig.clipStart ?? 0, clipConfig.clipEnd ?? 1, clipAmount),
           };
         }
 
@@ -1158,6 +1216,7 @@ function AthoraScene({ modelState, hidden = false }) {
               renderMaterials.push({
                 material,
                 flavorIndex: child.userData.flavorIndex,
+                lineupRole: child.userData.lineupRole,
               });
             });
           }
@@ -1266,18 +1325,29 @@ function AthoraScene({ modelState, hidden = false }) {
     const applyVariantOpacity = (variant, variantOpacity, targetState) => {
       const renderMaterials = variant.userData.renderMaterials || [];
       const flavorProgress = Number.isFinite(targetState.flavorProgress) ? targetState.flavorProgress : null;
-      const opacityKey = `${Math.round(variantOpacity * 1000)}:${flavorProgress === null ? 'x' : Math.round(flavorProgress * 1000)}`;
+      const lineupIsolation = targetState.asset === 'screen3Desk'
+        ? smoothstep(0.56, 0.74, targetState.clipProgress ?? 0)
+        : 0;
+      const opacityKey = [
+        Math.round(variantOpacity * 1000),
+        flavorProgress === null ? 'x' : Math.round(flavorProgress * 1000),
+        Math.round(lineupIsolation * 1000),
+      ].join(':');
       if (variant.userData.opacityKey === opacityKey) return;
 
       variant.userData.opacityKey = opacityKey;
-      renderMaterials.forEach(({ material, flavorIndex }) => {
+      renderMaterials.forEach(({ material, flavorIndex, lineupRole }) => {
         let flavorOpacity = 1;
         if (flavorProgress !== null && flavorIndex !== undefined) {
           const rawFlavorOpacity = clamp(1 - Math.abs(flavorIndex - flavorProgress), 0, 1);
           flavorOpacity = smoothstep(0, 1, rawFlavorOpacity);
         }
 
-        const nextOpacity = material.userData.baseOpacity * variantOpacity * flavorOpacity;
+        const lineupOpacity = lineupRole === 'lineup-side' || lineupRole === 'lineup-platform'
+          ? 1 - lineupIsolation
+          : 1;
+
+        const nextOpacity = material.userData.baseOpacity * variantOpacity * flavorOpacity * lineupOpacity;
         const shouldBeTransparent = material.userData.baseTransparent || nextOpacity < 0.999;
         if (material.transparent !== shouldBeTransparent) {
           material.transparent = shouldBeTransparent;
@@ -1287,7 +1357,7 @@ function AthoraScene({ modelState, hidden = false }) {
       });
     };
 
-    const applyBoundAnimation = (variant, targetState, delta) => {
+    const applyBoundAnimation = (variant, targetState, delta, elapsed) => {
       const boundAnimation = animationMixers.get(variant);
       if (!boundAnimation) return;
 
@@ -1299,7 +1369,21 @@ function AthoraScene({ modelState, hidden = false }) {
       }
 
       const clipProgress = clamp(targetState.clipProgress ?? 0, 0, 1);
-      if (Math.abs((variant.userData.lastClipProgress ?? -1) - clipProgress) > 0.001) {
+      const shouldIdleLoop = targetState.asset === 'screen3Desk'
+        && targetState.clipIdleLoop
+        && clipProgress <= 0.001;
+      let poseKey = `scroll:${Math.round(clipProgress * 1000)}`;
+
+      if (shouldIdleLoop) {
+        const loopStart = clamp(targetState.clipIdleLoopStart ?? 0, 0, boundAnimation.duration);
+        const loopEnd = clamp(targetState.clipIdleLoopEnd ?? boundAnimation.duration, loopStart + 0.001, boundAnimation.duration);
+        const loopDuration = Math.max(loopEnd - loopStart, 0.001);
+        const speed = targetState.clipIdleLoopSpeed ?? 1;
+        const loopTime = loopStart + ((elapsed * speed) % loopDuration);
+        boundAnimation.mixer.setTime(loopTime);
+        variant.userData.lastClipProgress = null;
+        poseKey = `idle:${Math.round(loopTime * 1000)}`;
+      } else if (Math.abs((variant.userData.lastClipProgress ?? -1) - clipProgress) > 0.001) {
         boundAnimation.mixer.setTime(boundAnimation.duration * clipProgress);
         variant.userData.lastClipProgress = clipProgress;
       }
@@ -1308,8 +1392,9 @@ function AthoraScene({ modelState, hidden = false }) {
       lineupChildren.forEach((child) => {
         const offset = child.userData.lineupOffset;
         if (offset) {
-          if (!child.userData.lineupBasePosition) {
+          if (child.userData.lineupBasePositionKey !== poseKey) {
             child.userData.lineupBasePosition = child.position.clone();
+            child.userData.lineupBasePositionKey = poseKey;
           }
           const basePosition = child.userData.lineupBasePosition;
           child.position.set(
@@ -1453,6 +1538,14 @@ function AthoraScene({ modelState, hidden = false }) {
           { match: /aluminium_can_250_ml007|250 ml\.007/i, x: 0.005, y: 0, z: 0.03 },
         ];
         clone.traverse((child) => {
+          if (/Cylinder\.006|Cylinder\.013/i.test(child.name)) {
+            child.userData.lineupRole = 'lineup-platform';
+          } else if (/aluminium can 250 ml\.005|250 ml\.005/i.test(child.name)) {
+            child.userData.lineupRole = 'lineup-focus';
+          } else if (/aluminium can 250 ml\.006|aluminium can 250 ml\.007|250 ml\.006|250 ml\.007/i.test(child.name)) {
+            child.userData.lineupRole = 'lineup-side';
+          }
+
           const offset = lineupOffsets.find(({ match }) => match.test(child.name));
           if (offset) {
             child.userData.lineupOffset = offset;
@@ -1667,7 +1760,7 @@ function AthoraScene({ modelState, hidden = false }) {
       });
       visibleModels.forEach(({ variant, opacity, state }) => {
         variant.visible = true;
-        applyBoundAnimation(variant, state, delta);
+        applyBoundAnimation(variant, state, delta, elapsed);
         applyVariantOpacity(variant, opacity, state);
         applyVariantTransform(variant, state, elapsed, entryMotionState.justStarted || !wasShowingModel || !activeVariants.has(variant));
       });
@@ -2152,17 +2245,12 @@ function SystemsSection({ section }) {
 
 function ClaimSection({ section }) {
   const isFigmaClaim = Boolean(section.figmaClaim);
+  const hasStickyMotion = Boolean(section.modelClipScroll);
   const desktopLines = section.headlineLines || [section.headline];
   const mobileLines = section.mobileHeadlineLines || desktopLines;
   const hasMobileLines = Boolean(section.mobileHeadlineLines);
-
-  return (
-    <section
-      className={`panel claim-panel ${isFigmaClaim ? `figma-claim-panel figma-claim-${section.figmaClaim}` : ''} ${
-        SECTION_THEMES[section.theme].className
-      }`}
-      id={section.id}
-    >
+  const content = (
+    <>
       <h2 className={hasMobileLines ? 'has-mobile-lines' : undefined}>
         <span className="claim-line-set claim-line-set-desktop">
           {desktopLines.map((line) => (
@@ -2178,6 +2266,19 @@ function ClaimSection({ section }) {
         ) : null}
       </h2>
       <ScrollDown />
+    </>
+  );
+
+  return (
+    <section
+      className={`panel claim-panel ${hasStickyMotion ? 'claim-panel-sticky-motion' : ''} ${
+        isFigmaClaim ? `figma-claim-panel figma-claim-${section.figmaClaim}` : ''
+      } ${
+        SECTION_THEMES[section.theme].className
+      }`}
+      id={section.id}
+    >
+      {hasStickyMotion ? <div className="claim-motion-stage">{content}</div> : content}
     </section>
   );
 }
