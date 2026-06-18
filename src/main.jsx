@@ -52,15 +52,15 @@ const sections = [
       y: -0.065,
       z: 0,
       scale: 0.86,
-      rotate: 0.02,
+      rotate: 0,
       tilt: 0,
       scene: 3,
       opacity: 1,
-      asset: 'screen1',
+      asset: 'screen2Blue',
       assetSwitchAt: 1.01,
-      clipProgress: 1,
+      clipProgress: 0,
       spin: 0,
-      floatTilt: 0.01,
+      floatTilt: 0,
     },
   },
   {
@@ -84,9 +84,9 @@ const sections = [
           pitch: -0.4,
           scene: 3,
           opacity: 1,
-          asset: 'screen1',
+          asset: 'screen2Blue',
           assetSwitchAt: 0.03,
-          clipProgress: 1,
+          clipProgress: 0,
           spin: 0,
           floatTilt: 0.01,
         },
@@ -159,8 +159,8 @@ const sections = [
       pitch: -0.4,
       scene: 3,
       opacity: 1,
-      asset: 'screen1',
-      clipProgress: 1,
+      asset: 'screen2Blue',
+      clipProgress: 0,
       spin: 0,
       floatTilt: 0.01,
     },
@@ -1527,6 +1527,40 @@ function AthoraScene({ modelState, hidden = false }) {
         }
       );
     }
+
+    loader.load(
+      '/blender-files/screens/2screen-blue-orange-green.glb',
+      (gltf) => {
+        const createFlavorVariant = (flavorIndex) => {
+          const clone = gltf.scene.clone(true);
+          const removableMeshes = [];
+
+          clone.traverse((child) => {
+            if (!child.isMesh || !child.material) return;
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            if (getFlavorIndex(child, materials) !== flavorIndex) {
+              removableMeshes.push(child);
+            }
+          });
+          removableMeshes.forEach((child) => child.parent?.remove(child));
+
+          return prepareClone(clone, 3.35);
+        };
+
+        assetVariants.screen2Blue = createFlavorVariant(0);
+        assetVariants.screen2Orange = createFlavorVariant(1);
+        assetVariants.screen2Green = createFlavorVariant(2);
+        scheduleWarmVariant(assetVariants.screen2Blue);
+        scheduleWarmVariant(assetVariants.screen2Orange, 260);
+        scheduleWarmVariant(assetVariants.screen2Green, 360);
+      },
+      undefined,
+      () => {
+        assetVariants.screen2Blue = undefined;
+        assetVariants.screen2Orange = undefined;
+        assetVariants.screen2Green = undefined;
+      }
+    );
 
     loader.load(
       '/blender-files/screens/3screen-on-desk-three.glb',
