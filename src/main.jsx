@@ -244,6 +244,7 @@ const sections = [
     id: 'fruit',
     type: 'nutrition',
     variant: 'fruit',
+    modelTransitionStart: 1,
     stackItems: [
       { id: 'real-fruit', label: 'Real Fruit' },
       { id: 'zero-added', label: ['zero added', 'sugar'], active: true },
@@ -251,46 +252,19 @@ const sections = [
     ],
     theme: 'blue',
     modelState: {
-      x: -2.32,
+      x: -2,
       y: -0.06,
-      z: 0,
+      z: 3,
       scale: 0.9,
-      rotate: 0,
-      tilt: 0,
+      rotate: 5,
+      tilt: 2,
       pitch: 0,
       scene: 3,
       opacity: 1,
-      asset: 'screen4Divided',
+      asset: 'screen4Fruit',
       clipProgress: 0,
       spin: 0,
       floatTilt: 0,
-      entryMotion: {
-        id: 'fruit-can-from-left',
-        duration: 1.05,
-        from: {
-          x: -5.35,
-          y: -0.08,
-          z: 0,
-          scale: 0.9,
-          rotate: -2.45,
-          tilt: -0.16,
-          pitch: 0.04,
-          opacity: 1,
-        },
-      },
-      exitMotion: {
-        range: 0.34,
-        to: {
-          x: -5.35,
-          y: -0.08,
-          z: 0,
-          scale: 0.9,
-          rotate: -2.45,
-          tilt: -0.16,
-          pitch: 0.04,
-          opacity: 1,
-        },
-      },
     },
   },
   {
@@ -300,7 +274,7 @@ const sections = [
     headlineLines: ['1,000+ MG', 'ELECTROLYTES'],
     theme: 'blue',
     modelState: {
-      x: 2.92,
+      x: -2.92,
       y: -1.12,
       z: 0,
       scale: 1.1,
@@ -309,7 +283,7 @@ const sections = [
       pitch: 0.3,
       scene: 3,
       opacity: 1,
-      asset: 'screen4Divided',
+      asset: 'screen4Electrolytes',
       clipProgress: 1,
       spin: 0,
       floatTilt: 0,
@@ -331,7 +305,23 @@ const sections = [
     inputLabel: 'enter your EMAIL',
     legal: 'By joining, you agree to the Terms and Privacy Policy',
     theme: 'blue',
-    modelState: { x: 1.75, y: 0.05, z: 0, scale: 1.02, rotate: 0.62, scene: 3, opacity: 0 },
+    modelState: {
+      x: 2,
+      y: 0.5,
+      z: 0,
+      scale: 0.7,
+      rotate: -0.32,
+      tilt: 0,
+      pitch: 0,
+      scene: 3,
+      opacity: 1,
+      asset: 'lastScreen',
+      clipProgress: 0,
+      clipAutoplay: true,
+      clipSpeed: 1,
+      spin: 0,
+      floatTilt: 0,
+    },
   },
 ];
 
@@ -551,6 +541,8 @@ function interpolateState(a, b, t) {
     spin: lerp(a.spin ?? 0.26, b.spin ?? 0.26, t),
     floatTilt: lerp(a.floatTilt ?? 0.055, b.floatTilt ?? 0.055, t),
     clipProgress: lerp(a.clipProgress ?? 0, b.clipProgress ?? 0, t),
+    clipAutoplay: t < assetSwitchAt ? a.clipAutoplay : b.clipAutoplay,
+    clipSpeed: t < assetSwitchAt ? a.clipSpeed : b.clipSpeed,
     flavorProgress: lerp(a.flavorProgress ?? 0, b.flavorProgress ?? a.flavorProgress ?? 0, t),
     asset: t < assetSwitchAt ? a.asset : b.asset,
     scene: t < 0.5 ? a.scene : b.scene,
@@ -559,48 +551,58 @@ function interpolateState(a, b, t) {
   };
 }
 
+function getAnchoredMotionValue(values = {}, anchor = {}, key, targetValue) {
+  const value = values[key];
+  const anchorValue = anchor[key];
+  if (Number.isFinite(value) && Number.isFinite(anchorValue) && Number.isFinite(targetValue)) {
+    return value + (targetValue - anchorValue);
+  }
+
+  return value ?? targetValue;
+}
+
 function createFlavorSwapState(from, to, t, index = 0) {
   const stableUntil = 0.16;
   if (t <= stableUntil) return from;
 
-  const exitProgress = smoothstep(stableUntil, 0.64, t);
-  const enterProgress = smoothstep(0.42, 0.76, t);
+  const exitProgress = smoothstep(stableUntil, 0.58, t);
+  const enterProgress = smoothstep(0.46, 0.76, t);
   const exitDirection = index % 2 === 0 ? 1 : 0.86;
   const exitState = {
     ...from,
-    x: lerp(from.x, from.x + 1.12 * exitDirection, exitProgress),
-    y: lerp(from.y, from.y - 0.88, exitProgress),
-    z: lerp(from.z ?? 0, (from.z ?? 0) - 0.08, exitProgress),
-    scale: lerp(from.scale, from.scale * 0.92, exitProgress),
-    rotate: lerp(from.rotate ?? 0, (from.rotate ?? 0) - 0.74, exitProgress),
-    tilt: lerp(from.tilt ?? 0, (from.tilt ?? 0) - 1.08, exitProgress),
-    pitch: lerp(from.pitch ?? 0, (from.pitch ?? 0) - 0.28, exitProgress),
-    opacity: 1 - smoothstep(0.54, 0.72, t),
+    x: lerp(from.x, from.x + 1.72 * exitDirection, exitProgress),
+    y: lerp(from.y, from.y - 1.32, exitProgress),
+    z: lerp(from.z ?? 0, (from.z ?? 0) - 0.12, exitProgress),
+    scale: lerp(from.scale, from.scale * 0.88, exitProgress),
+    rotate: lerp(from.rotate ?? 0, (from.rotate ?? 0) - 0.92, exitProgress),
+    tilt: lerp(from.tilt ?? 0, (from.tilt ?? 0) - 1.22, exitProgress),
+    pitch: lerp(from.pitch ?? 0, (from.pitch ?? 0) - 0.34, exitProgress),
+    opacity: 1,
   };
 
   if (enterProgress <= 0.001) return exitState;
 
   const entryFrom = {
     ...to,
-    x: to.x - 0.54,
-    y: to.y + 0.42,
-    z: (to.z ?? 0) - 0.04,
-    scale: to.scale * 0.88,
-    rotate: (to.rotate ?? 0) + 0.34,
-    tilt: (to.tilt ?? 0) + 0.3,
-    pitch: (to.pitch ?? 0) + 0.16,
-    opacity: 0,
+    x: to.x - 0.9,
+    y: to.y + 0.64,
+    z: (to.z ?? 0) - 0.06,
+    scale: to.scale * 0.9,
+    rotate: (to.rotate ?? 0) + 0.42,
+    tilt: (to.tilt ?? 0) + 0.38,
+    pitch: (to.pitch ?? 0) + 0.18,
+    opacity: 1,
   };
   const entryState = {
     ...interpolateState(entryFrom, to, enterProgress),
     asset: to.asset,
     scene: to.scene,
-    opacity: enterProgress,
+    opacity: 1,
   };
 
   return {
     ...entryState,
-    secondaryModels: exitState.opacity > 0.02 ? [exitState] : [],
+    secondaryModels: exitProgress < 0.98 ? [exitState] : [],
   };
 }
 
@@ -669,12 +671,16 @@ function useScrollModelState() {
           ? clamp((scrollY - currentMetric.top) / Math.max(systemsProgressRange, 1), 0, 1)
           : rawSectionProgress;
         const current = currentSection.modelState;
-        const next = sections[Math.min(activeIndex + 1, sections.length - 1)].modelState;
         const modelTransitionStart = currentSection.modelTransitionStart ?? 0;
+        const next = modelTransitionStart >= 1
+          ? current
+          : sections[Math.min(activeIndex + 1, sections.length - 1)].modelState;
         const modelProgress =
-          modelTransitionStart > 0
-            ? clamp((sectionProgress - modelTransitionStart) / Math.max(1 - modelTransitionStart, 0.001), 0, 1)
-            : sectionProgress;
+          modelTransitionStart >= 1
+            ? 0
+            : modelTransitionStart > 0
+              ? clamp((sectionProgress - modelTransitionStart) / Math.max(1 - modelTransitionStart, 0.001), 0, 1)
+              : sectionProgress;
         const totalScrollable = Math.max(document.documentElement.scrollHeight - sectionHeight, 1);
         const showNav = scrollY >= sectionHeight * 0.72 || window.location.hash === '#intro';
 
@@ -731,35 +737,67 @@ function useScrollModelState() {
           };
         }
 
+        if (current.entryMotion && scrollDirection !== 'up') {
+          const entryRange = Math.max(current.entryMotion.range ?? 0.3, 0.001);
+          const entryProgress = smoothstep(0, 1, clamp(rawSectionProgress / entryRange, 0, 1));
+          const entryFrom = current.entryMotion.from || {};
+          const entryAnchor = current.entryMotion.targetAnchor || {};
+
+          interpolatedModelState = {
+            ...interpolatedModelState,
+            x: lerp(getAnchoredMotionValue(entryFrom, entryAnchor, 'x', interpolatedModelState.x), interpolatedModelState.x, entryProgress),
+            y: lerp(getAnchoredMotionValue(entryFrom, entryAnchor, 'y', interpolatedModelState.y), interpolatedModelState.y, entryProgress),
+            z: lerp(getAnchoredMotionValue(entryFrom, entryAnchor, 'z', interpolatedModelState.z), interpolatedModelState.z, entryProgress),
+            scale: lerp(getAnchoredMotionValue(entryFrom, entryAnchor, 'scale', interpolatedModelState.scale), interpolatedModelState.scale, entryProgress),
+            rotate: lerp(getAnchoredMotionValue(entryFrom, entryAnchor, 'rotate', interpolatedModelState.rotate ?? 0), interpolatedModelState.rotate ?? 0, entryProgress),
+            tilt: lerp(getAnchoredMotionValue(entryFrom, entryAnchor, 'tilt', interpolatedModelState.tilt ?? 0), interpolatedModelState.tilt ?? 0, entryProgress),
+            pitch: lerp(getAnchoredMotionValue(entryFrom, entryAnchor, 'pitch', interpolatedModelState.pitch ?? 0), interpolatedModelState.pitch ?? 0, entryProgress),
+            opacity: lerp(getAnchoredMotionValue(entryFrom, entryAnchor, 'opacity', interpolatedModelState.opacity ?? 1), interpolatedModelState.opacity ?? 1, entryProgress),
+            entryMotion: undefined,
+          };
+        }
+
         if (current.exitMotion && scrollDirection === 'up') {
           const exitRange = Math.max(current.exitMotion.range ?? 0.28, 0.001);
           const visibleProgress = smoothstep(0, 1, clamp(rawSectionProgress / exitRange, 0, 1));
           if (visibleProgress < 1) {
             const exitTo = current.exitMotion.to || {};
+            const exitAnchor = current.exitMotion.targetAnchor || {};
 
             interpolatedModelState = {
               ...interpolatedModelState,
-              x: lerp(exitTo.x ?? interpolatedModelState.x, interpolatedModelState.x, visibleProgress),
-              y: lerp(exitTo.y ?? interpolatedModelState.y, interpolatedModelState.y, visibleProgress),
-              z: lerp(exitTo.z ?? interpolatedModelState.z, interpolatedModelState.z, visibleProgress),
-              scale: lerp(exitTo.scale ?? interpolatedModelState.scale, interpolatedModelState.scale, visibleProgress),
-              rotate: lerp(exitTo.rotate ?? interpolatedModelState.rotate ?? 0, interpolatedModelState.rotate ?? 0, visibleProgress),
-              tilt: lerp(exitTo.tilt ?? interpolatedModelState.tilt ?? 0, interpolatedModelState.tilt ?? 0, visibleProgress),
-              pitch: lerp(exitTo.pitch ?? interpolatedModelState.pitch ?? 0, interpolatedModelState.pitch ?? 0, visibleProgress),
-              opacity: lerp(exitTo.opacity ?? interpolatedModelState.opacity, interpolatedModelState.opacity, visibleProgress),
+              x: lerp(getAnchoredMotionValue(exitTo, exitAnchor, 'x', interpolatedModelState.x), interpolatedModelState.x, visibleProgress),
+              y: lerp(getAnchoredMotionValue(exitTo, exitAnchor, 'y', interpolatedModelState.y), interpolatedModelState.y, visibleProgress),
+              z: lerp(getAnchoredMotionValue(exitTo, exitAnchor, 'z', interpolatedModelState.z), interpolatedModelState.z, visibleProgress),
+              scale: lerp(getAnchoredMotionValue(exitTo, exitAnchor, 'scale', interpolatedModelState.scale), interpolatedModelState.scale, visibleProgress),
+              rotate: lerp(getAnchoredMotionValue(exitTo, exitAnchor, 'rotate', interpolatedModelState.rotate ?? 0), interpolatedModelState.rotate ?? 0, visibleProgress),
+              tilt: lerp(getAnchoredMotionValue(exitTo, exitAnchor, 'tilt', interpolatedModelState.tilt ?? 0), interpolatedModelState.tilt ?? 0, visibleProgress),
+              pitch: lerp(getAnchoredMotionValue(exitTo, exitAnchor, 'pitch', interpolatedModelState.pitch ?? 0), interpolatedModelState.pitch ?? 0, visibleProgress),
+              opacity: lerp(getAnchoredMotionValue(exitTo, exitAnchor, 'opacity', interpolatedModelState.opacity), interpolatedModelState.opacity, visibleProgress),
               entryMotion: undefined,
             };
           }
         }
 
-        setState({
+        const nextState = {
           progress: clamp(scrollY / totalScrollable, 0, 1),
           activeIndex,
           sectionProgress,
           rawSectionProgress,
           showNav,
           modelState: interpolatedModelState,
-        });
+        };
+
+        window.__athoraDebug = {
+          activeIndex,
+          sectionId: currentSection.id,
+          rawSectionProgress,
+          sectionProgress,
+          scrollDirection,
+          modelState: interpolatedModelState,
+        };
+
+        setState(nextState);
       });
     };
 
@@ -1155,9 +1193,16 @@ function AthoraScene({ modelState, hidden = false }) {
       });
     };
 
-    const applyBoundAnimation = (variant, targetState) => {
+    const applyBoundAnimation = (variant, targetState, delta) => {
       const boundAnimation = animationMixers.get(variant);
       if (!boundAnimation) return;
+
+      if (targetState.clipAutoplay) {
+        const speed = targetState.clipSpeed ?? 1;
+        boundAnimation.mixer.update(delta * speed);
+        variant.userData.lastClipProgress = null;
+        return;
+      }
 
       const clipProgress = clamp(targetState.clipProgress ?? 0, 0, 1);
       if (Math.abs((variant.userData.lastClipProgress ?? -1) - clipProgress) > 0.001) {
@@ -1334,14 +1379,33 @@ function AthoraScene({ modelState, hidden = false }) {
     loader.load(
       '/blender-files/screens/4screen-divided-by-two.glb',
       (gltf) => {
-        const clone = gltf.scene.clone(true);
-        assetVariants.screen4Divided = prepareClone(clone, 3.6, { normalizeAfterScale: true });
-        bindClipsToScroll(assetVariants.screen4Divided, gltf.animations);
-        scheduleWarmVariant(assetVariants.screen4Divided, 620);
+        const fruitClone = gltf.scene.clone(true);
+        const electrolytesClone = gltf.scene.clone(true);
+        assetVariants.screen4Fruit = prepareClone(fruitClone, 3.6, { normalizeAfterScale: true });
+        assetVariants.screen4Electrolytes = prepareClone(electrolytesClone, 3.6, { normalizeAfterScale: true });
+        bindClipsToScroll(assetVariants.screen4Fruit, gltf.animations);
+        bindClipsToScroll(assetVariants.screen4Electrolytes, gltf.animations);
+        scheduleWarmVariant(assetVariants.screen4Fruit, 620);
+        scheduleWarmVariant(assetVariants.screen4Electrolytes, 700);
       },
       undefined,
       () => {
-        assetVariants.screen4Divided = undefined;
+        assetVariants.screen4Fruit = undefined;
+        assetVariants.screen4Electrolytes = undefined;
+      }
+    );
+
+    loader.load(
+      '/blender-files/screens/last-screen.glb',
+      (gltf) => {
+        const clone = gltf.scene.clone(true);
+        assetVariants.lastScreen = prepareClone(clone, 3.6, { normalizeAfterScale: true });
+        bindClipsToScroll(assetVariants.lastScreen, gltf.animations);
+        scheduleWarmVariant(assetVariants.lastScreen, 780);
+      },
+      undefined,
+      () => {
+        assetVariants.lastScreen = undefined;
       }
     );
 
@@ -1420,7 +1484,7 @@ function AthoraScene({ modelState, hidden = false }) {
     };
 
     const animate = () => {
-      clock.getDelta();
+      const delta = Math.min(clock.getDelta(), 0.033);
       const elapsed = clock.elapsedTime;
       let target = modelStateRef.current;
 
@@ -1508,7 +1572,7 @@ function AthoraScene({ modelState, hidden = false }) {
       });
       visibleModels.forEach(({ variant, opacity, state }) => {
         variant.visible = true;
-        applyBoundAnimation(variant, state);
+        applyBoundAnimation(variant, state, delta);
         applyVariantOpacity(variant, opacity, state);
         applyVariantTransform(variant, state, elapsed, entryMotionState.justStarted || !wasShowingModel || !activeVariants.has(variant));
       });
@@ -1702,6 +1766,10 @@ function FixedHeroSequenceBackground({ visible, berryOpacity }) {
 
 function FixedSystemsBackground({ visible }) {
   return <div className={`systems-fixed-bg ${visible ? 'systems-fixed-bg-visible' : ''}`} aria-hidden="true" />;
+}
+
+function FixedDetailMorphBackground({ visible }) {
+  return <div className={`detail-morph-bg ${visible ? 'detail-morph-bg-visible' : ''}`} aria-hidden="true" />;
 }
 
 function Navigation({ activeIndex = 0, showNav, preloaderLocked, legal = false }) {
@@ -2393,19 +2461,36 @@ function AccessSection({ section }) {
       <div className="access-copy">
         <h2>{section.headline}</h2>
         <form
+          className="access-email-form"
           onSubmit={(event) => {
             event.preventDefault();
             setSubmitted(true);
           }}
         >
           <label>
-            <span>{section.inputLabel}</span>
-            <input type="email" required placeholder="you@domain.com" />
+            <span className="sr-only">{section.inputLabel}</span>
+            <input type="email" required placeholder={section.inputLabel} aria-label={section.inputLabel} />
           </label>
-          <button type="submit">{submitted ? 'Requested' : 'Join'}</button>
+          <button type="submit" aria-label={submitted ? 'Requested' : 'Submit email'}>
+            <svg className="access-submit-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M7 17L17 7" />
+              <path d="M10 7H17V14" />
+            </svg>
+          </button>
         </form>
-        <p>{section.legal}</p>
+        <p>
+          <span>By joining, you agree to the </span>
+          <a href="/terms">Terms</a>
+          <span> and </span>
+          <a href="/privacy">Privacy Policy</a>
+        </p>
       </div>
+      <img
+        className="access-brand-wordmark"
+        src="/figma-lineup/athora-access-vector-wordmark.svg"
+        alt=""
+        aria-hidden="true"
+      />
       <footer className="footer-links">
         {LEGAL_LINKS.map((link, index) => (
           <React.Fragment key={link.path}>
@@ -2682,6 +2767,7 @@ function LandingApp() {
   }, []);
 
   const hideSceneDuringIntroReveal = introSceneHeld || (introRevealPhase !== 'idle' && introRevealPhase !== 'done');
+  const showDetailMorphBg = activeSection?.id === 'simplicity' || activeSection?.id === 'access';
 
   return (
     <div
@@ -2702,6 +2788,7 @@ function LandingApp() {
           activeSection?.type === 'nutrition'
         }
       />
+      <FixedDetailMorphBackground visible={showDetailMorphBg} />
       <AthoraScene modelState={modelState} hidden={hideSceneDuringIntroReveal} />
       <Navigation activeIndex={activeIndex} showNav={showNav} preloaderLocked={preloaderLocked} />
       <PreloaderTransitionOverlay phase={introRevealPhase} />
