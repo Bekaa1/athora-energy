@@ -272,15 +272,16 @@ const sections = [
     type: 'nutrition',
     variant: 'electrolytes',
     headlineLines: ['1,000+ MG', 'ELECTROLYTES'],
+    modelTransitionStart: 1,
     theme: 'blue',
     modelState: {
-      x: 4,
-      y: -1.12,
+      x: 3,
+      y: -0.7,
       z: 0,
-      scale: 2,
-      rotate: -0.5,
-      tilt: 0.1,
-      pitch: 0.3,
+      scale: 1.3,
+      rotate: -0.3,
+      tilt: 0.05 , // отвечает за вертикальность банки
+      pitch: 0.2,
       scene: 3,
       opacity: 1,
       asset: 'screen4Electrolytes',
@@ -1167,6 +1168,54 @@ function AthoraScene({ modelState, hidden = false }) {
       animationMixers.set(object, { mixer, duration });
     };
 
+    const applyStaticClipPose = (object, clips = [], progress = 0) => {
+      if (!clips.length) return;
+
+      const mixer = new THREE.AnimationMixer(object);
+      let duration = 0;
+      clips.forEach((clip) => {
+        duration = Math.max(duration, clip.duration || 0);
+        mixer.clipAction(clip).reset().play();
+      });
+      mixer.setTime(duration * clamp(progress, 0, 1));
+      object.updateMatrixWorld(true);
+      mixer.stopAllAction();
+      mixer.uncacheRoot(object);
+    };
+
+    const recenterVariantToVisibleBounds = (variant) => {
+      variant.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(variant);
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+      variant.position.sub(center);
+      variant.updateMatrixWorld(true);
+      variant.userData.basePosition = variant.position.clone();
+      variant.userData.renderInitialized = false;
+    };
+
+    const wrapVariantWithStablePivot = (variant) => {
+      const parent = variant.parent;
+      const wrapper = new THREE.Group();
+      wrapper.name = `${variant.name || 'variant'}Pivot`;
+
+      if (parent) {
+        parent.add(wrapper);
+      }
+      wrapper.add(variant);
+      variant.visible = true;
+
+      wrapper.visible = false;
+      wrapper.userData.basePosition = wrapper.position.clone();
+      wrapper.userData.baseScale = wrapper.scale.clone();
+      wrapper.userData.baseRotation = wrapper.rotation.clone();
+      wrapper.userData.renderMaterials = variant.userData.renderMaterials || [];
+      wrapper.userData.lineupChildren = variant.userData.lineupChildren || [];
+      wrapper.userData.renderInitialized = false;
+
+      return wrapper;
+    };
+
     const resolveVariant = (asset, sceneIndex) => (asset ? assetVariants[asset] : sceneVariants[sceneIndex]);
 
     const applyVariantOpacity = (variant, variantOpacity, targetState) => {
@@ -1381,10 +1430,13 @@ function AthoraScene({ modelState, hidden = false }) {
       (gltf) => {
         const fruitClone = gltf.scene.clone(true);
         const electrolytesClone = gltf.scene.clone(true);
-        assetVariants.screen4Fruit = prepareClone(fruitClone, 3.6, { normalizeAfterScale: true });
-        assetVariants.screen4Electrolytes = prepareClone(electrolytesClone, 3.6, { normalizeAfterScale: true });
-        // Keep the fruit screen static so its modelState coordinates directly control placement.
-        bindClipsToScroll(assetVariants.screen4Electrolytes, gltf.animations);
+        const fruitVariant = prepareClone(fruitClone, 3.6, { normalizeAfterScale: true });
+        const electrolytesVariant = prepareClone(electrolytesClone, 3.6, { normalizeAfterScale: true });
+        // Keep these screens static and wrap them so scale does not change their screen position.
+        applyStaticClipPose(electrolytesVariant, gltf.animations, 1);
+        recenterVariantToVisibleBounds(electrolytesVariant);
+        assetVariants.screen4Fruit = wrapVariantWithStablePivot(fruitVariant);
+        assetVariants.screen4Electrolytes = wrapVariantWithStablePivot(electrolytesVariant);
         scheduleWarmVariant(assetVariants.screen4Fruit, 620);
         scheduleWarmVariant(assetVariants.screen4Electrolytes, 700);
       },
