@@ -387,6 +387,32 @@ const INTRO_REVEAL_DURATION_MS = 1050;
 const INTRO_SCENE_REVEAL_DELAY_MS = 120;
 const PRELOADER_DURATION_MS = 3000;
 const PRELOADER_COMPLETE_HOLD_MS = 1500;
+const PRELOADER_ASSET_WAIT_PROGRESS = 0.985;
+const PRELOADER_ASSET_FINISH_MS = 360;
+const PRELOADER_FORCE_COMPLETE_MS = 12000;
+const CRITICAL_PRELOAD_IMAGE_SOURCES = [
+  '/figma-hero/background-main.png',
+  '/figma-hero/berry-right.svg',
+  '/figma-hero/image-3.svg',
+  '/figma-hero/berry-center.svg',
+];
+
+function preloadImageSource(src) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    const done = () => resolve(src);
+
+    image.onload = () => {
+      if (image.decode) {
+        image.decode().catch(() => {}).finally(done);
+      } else {
+        done();
+      }
+    };
+    image.onerror = done;
+    image.src = src;
+  });
+}
 
 const LEGAL_LINKS = [
   { label: 'Privacy Policy', path: '/privacy-policy' },
@@ -1072,13 +1098,18 @@ function normalizeObjectAfterScale(object, targetHeight = 3.35) {
   );
 }
 
-function AthoraScene({ modelState, hidden = false }) {
+function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
   const mountRef = useRef(null);
   const modelStateRef = useRef(modelState);
+  const onCriticalAssetsReadyRef = useRef(onCriticalAssetsReady);
 
   useEffect(() => {
     modelStateRef.current = modelState;
   }, [modelState]);
+
+  useEffect(() => {
+    onCriticalAssetsReadyRef.current = onCriticalAssetsReady;
+  }, [onCriticalAssetsReady]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -1116,6 +1147,8 @@ function AthoraScene({ modelState, hidden = false }) {
     const animationMixers = new Map();
     const warmupHandles = new Set();
     let activeVariants = new Set();
+    let criticalAssetsReadySent = false;
+    let disposed = false;
 
     const loader = new GLTFLoader();
     const getFlavorIndex = (mesh, materials) => {
@@ -1465,6 +1498,35 @@ function AthoraScene({ modelState, hidden = false }) {
       warmupHandles.add(handle);
     };
 
+    const notifyCriticalAssetsReady = () => {
+      if (disposed || criticalAssetsReadySent) return;
+      criticalAssetsReadySent = true;
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          if (!disposed) onCriticalAssetsReadyRef.current?.();
+        });
+      });
+    };
+
+    const warmCriticalVariants = (variants) => {
+      const pending = variants.filter(Boolean);
+      let index = 0;
+
+      const run = () => {
+        if (disposed) return;
+        if (index >= pending.length) {
+          notifyCriticalAssetsReady();
+          return;
+        }
+
+        warmVariant(pending[index]);
+        index += 1;
+        window.requestAnimationFrame(run);
+      };
+
+      window.requestAnimationFrame(run);
+    };
+
     // Temporarily disabled while replacement GLB files are being prepared.
     // Flip this to true after updating the file paths below.
     const USE_LEGACY_SCREEN_1_2_MODELS = false;
@@ -1550,15 +1612,18 @@ function AthoraScene({ modelState, hidden = false }) {
         assetVariants.screen2Blue = createFlavorVariant(0);
         assetVariants.screen2Orange = createFlavorVariant(1);
         assetVariants.screen2Green = createFlavorVariant(2);
-        scheduleWarmVariant(assetVariants.screen2Blue);
-        scheduleWarmVariant(assetVariants.screen2Orange, 260);
-        scheduleWarmVariant(assetVariants.screen2Green, 360);
+        warmCriticalVariants([
+          assetVariants.screen2Blue,
+          assetVariants.screen2Orange,
+          assetVariants.screen2Green,
+        ]);
       },
       undefined,
       () => {
         assetVariants.screen2Blue = undefined;
         assetVariants.screen2Orange = undefined;
         assetVariants.screen2Green = undefined;
+        notifyCriticalAssetsReady();
       }
     );
 
@@ -1809,6 +1874,7 @@ function AthoraScene({ modelState, hidden = false }) {
     animate();
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
       warmupHandles.forEach((handle) => {
         if (handle.type === 'idle' && 'cancelIdleCallback' in window) {
@@ -2033,26 +2099,35 @@ function Navigation({ activeIndex = 0, showNav, preloaderLocked, legal = false }
   );
 }
 
-function InstallSection({ section, onIntroReveal }) {
+function InstallSection({ section, onIntroReveal, criticalAssetsReady = false }) {
   const [isComplete, setIsComplete] = useState(false);
   const meterRef = useRef(null);
   const progressLabelRef = useRef(null);
   const videoRef = useRef(null);
+  const criticalAssetsReadyRef = useRef(criticalAssetsReady);
+
+  useEffect(() => {
+    criticalAssetsReadyRef.current = criticalAssetsReady;
+  }, [criticalAssetsReady]);
 
   useEffect(() => {
     let raf = 0;
     const startedAt = performance.now();
     let lastLabelProgress = -1;
     let completed = false;
+    let renderedProgress = 0;
+    let finishStartedAt = 0;
+    let finishStartProgress = 0;
 
     const renderProgress = (progressValue) => {
-      const progressPercent = progressValue * 100;
+      const safeProgress = clamp(progressValue, 0, 1);
+      const progressPercent = safeProgress * 100;
       const nextLabelProgress = Math.round(progressPercent);
       const meter = meterRef.current;
       const label = progressLabelRef.current;
 
       if (meter) {
-        meter.style.setProperty('--progress-ratio', progressValue.toFixed(5));
+        meter.style.setProperty('--progress-ratio', safeProgress.toFixed(5));
         meter.setAttribute('aria-label', `Installation progress ${nextLabelProgress} percent`);
       }
 
@@ -2061,7 +2136,7 @@ function InstallSection({ section, onIntroReveal }) {
         const labelWidth = label.offsetWidth || 76;
         const travel = Math.max(meterWidth - labelWidth, 0);
 
-        label.style.transform = `translate3d(${(travel * progressValue).toFixed(2)}px, -50%, 0)`;
+        label.style.transform = `translate3d(${(travel * safeProgress).toFixed(2)}px, -50%, 0)`;
 
         if (nextLabelProgress !== lastLabelProgress) {
           label.textContent = `${nextLabelProgress}%`;
@@ -2072,16 +2147,35 @@ function InstallSection({ section, onIntroReveal }) {
 
     const tick = (now) => {
       const elapsed = now - startedAt;
-      const progressValue = clamp(elapsed / PRELOADER_DURATION_MS, 0, 1);
+      const timeProgress = clamp(elapsed / PRELOADER_DURATION_MS, 0, 1);
+      const canFinish = criticalAssetsReadyRef.current || elapsed >= PRELOADER_FORCE_COMPLETE_MS;
+      let progressValue = timeProgress;
 
-      renderProgress(progressValue);
+      if (timeProgress >= 1 && canFinish) {
+        if (!finishStartedAt) {
+          finishStartedAt = now;
+          finishStartProgress = renderedProgress;
+        }
+        const finishProgress = smoothstep(
+          0,
+          1,
+          clamp((now - finishStartedAt) / PRELOADER_ASSET_FINISH_MS, 0, 1)
+        );
+        progressValue = lerp(finishStartProgress, 1, finishProgress);
+      } else if (!canFinish) {
+        progressValue = Math.min(timeProgress, PRELOADER_ASSET_WAIT_PROGRESS);
+      }
 
-      if (progressValue >= 1 && !completed) {
+      renderedProgress = Math.max(renderedProgress, progressValue);
+      renderProgress(renderedProgress);
+
+      if (renderedProgress >= 0.9995 && !completed) {
         completed = true;
+        renderProgress(1);
         setIsComplete(true);
       }
 
-      if (elapsed < PRELOADER_DURATION_MS) {
+      if (!completed) {
         raf = requestAnimationFrame(tick);
       }
     };
@@ -2825,10 +2919,10 @@ function LegalPage({ page }) {
   );
 }
 
-function SectionRenderer({ section, onIntroReveal, isActive }) {
+function SectionRenderer({ section, onIntroReveal, isActive, criticalAssetsReady }) {
   switch (section.type) {
     case 'install':
-      return <InstallSection section={section} onIntroReveal={onIntroReveal} />;
+      return <InstallSection section={section} onIntroReveal={onIntroReveal} criticalAssetsReady={criticalAssetsReady} />;
     case 'intro':
       return <IntroSection section={section} isActive={isActive} />;
     case 'systems':
@@ -2919,13 +3013,31 @@ function LandingApp() {
   const [preloaderLocked, setPreloaderLocked] = useState(false);
   const [introRevealPhase, setIntroRevealPhase] = useState('idle');
   const [introSceneHeld, setIntroSceneHeld] = useState(false);
+  const [criticalSceneReady, setCriticalSceneReady] = useState(false);
+  const [criticalImagesReady, setCriticalImagesReady] = useState(false);
   const introRevealPhaseRef = useRef('idle');
   const introRevealTimersRef = useRef([]);
   const restoreScrollStylesRef = useRef(() => {});
+  const markCriticalSceneReady = useCallback(() => {
+    setCriticalSceneReady(true);
+  }, []);
+  const criticalAssetsReady = criticalSceneReady && criticalImagesReady;
 
   useEffect(() => {
     introRevealPhaseRef.current = introRevealPhase;
   }, [introRevealPhase]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    Promise.all(CRITICAL_PRELOAD_IMAGE_SOURCES.map(preloadImageSource)).then(() => {
+      if (!cancelled) setCriticalImagesReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -3022,7 +3134,11 @@ function LandingApp() {
         }
       />
       <FixedDetailMorphBackground visible={showDetailMorphBg} />
-      <AthoraScene modelState={modelState} hidden={hideSceneDuringIntroReveal} />
+      <AthoraScene
+        modelState={modelState}
+        hidden={hideSceneDuringIntroReveal}
+        onCriticalAssetsReady={markCriticalSceneReady}
+      />
       <Navigation activeIndex={activeIndex} showNav={showNav} preloaderLocked={preloaderLocked} />
       <PreloaderTransitionOverlay phase={introRevealPhase} />
       <main>
@@ -3032,6 +3148,7 @@ function LandingApp() {
             key={section.id}
             onIntroReveal={startIntroReveal}
             isActive={activeIndex === index}
+            criticalAssetsReady={criticalAssetsReady}
           />
         ))}
       </main>
