@@ -2835,7 +2835,7 @@ function LandingApp() {
   }, []);
 
   const hideSceneDuringIntroReveal = introSceneHeld || (introRevealPhase !== 'idle' && introRevealPhase !== 'done');
-  const showDetailMorphBg = activeSection?.id === 'simplicity' || activeSection?.id === 'access';
+  const showDetailMorphBg = false;
 
   return (
     <div
@@ -2852,9 +2852,12 @@ function LandingApp() {
         visible={
           activeSection?.type === 'systems' ||
           activeSection?.type === 'claim-stack' ||
+          activeSection?.id === 'lineup' ||
           activeSection?.id === 'open-can' ||
           activeSection?.type === 'price-stack' ||
-          activeSection?.type === 'nutrition'
+          activeSection?.type === 'nutrition' ||
+          activeSection?.id === 'simplicity' ||
+          activeSection?.id === 'access'
         }
       />
       <FixedDetailMorphBackground visible={showDetailMorphBg} />
