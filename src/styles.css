@@ -1408,6 +1408,15 @@ main {
   top: calc(50% + 17px);
 }
 
+.figma-claim-open-can {
+  background: transparent;
+}
+
+.figma-claim-open-can::before,
+.figma-claim-open-can::after {
+  background: transparent;
+}
+
 .figma-claim-simplicity h2 {
   top: calc(50% + 20px);
   width: min(1152px, calc(100% - 288px));

@@ -265,6 +265,21 @@ const sections = [
       clipProgress: 0,
       spin: 0,
       floatTilt: 0,
+      entryMotion: {
+        id: 'fruit-roll-in',
+        mode: 'time',
+        duration: 0.78,
+        range: 0.28,
+        from: {
+          x: -3.45,
+          y: -0.02,
+          scale: 0.58,
+          rotate: -0.38,
+          tilt: -0.28,
+          pitch: -0.04,
+          opacity: 0,
+        },
+      },
     },
   },
   {
@@ -663,7 +678,8 @@ function useScrollModelState() {
         }
 
         const currentMetric = metrics[activeIndex];
-        const nextMetric = metrics[Math.min(activeIndex + 1, metrics.length - 1)];
+        const nextIndex = Math.min(activeIndex + 1, metrics.length - 1);
+        const nextMetric = metrics[nextIndex];
         const sectionEnd = nextMetric?.top > currentMetric.top ? nextMetric.top : currentMetric.top + currentMetric.height;
         const currentSection = sections[activeIndex];
         const rawSectionProgress = clamp((scrollY - currentMetric.top) / Math.max(sectionEnd - currentMetric.top, 1), 0, 1);
@@ -738,7 +754,7 @@ function useScrollModelState() {
           };
         }
 
-        if (current.entryMotion && scrollDirection !== 'up') {
+        if (current.entryMotion && current.entryMotion.mode !== 'time' && scrollDirection !== 'up') {
           const entryRange = Math.max(current.entryMotion.range ?? 0.3, 0.001);
           const entryProgress = smoothstep(0, 1, clamp(rawSectionProgress / entryRange, 0, 1));
           const entryFrom = current.entryMotion.from || {};
@@ -2836,6 +2852,7 @@ function LandingApp() {
         visible={
           activeSection?.type === 'systems' ||
           activeSection?.type === 'claim-stack' ||
+          activeSection?.id === 'open-can' ||
           activeSection?.type === 'price-stack' ||
           activeSection?.type === 'nutrition'
         }
