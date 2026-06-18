@@ -194,17 +194,19 @@ const sections = [
     headline: 'ATHORA',
     theme: 'blue',
     modelState: {
-      x: -0.52,
-      y: -0.22,
+      x: 0,
+      y: -0.2,
       z: 0,
-      scale: 1.04,
+      scale: 2.7,
       rotate: 0,
       tilt: 0,
-      pitch: 0,
+      pitch: -0.085,
       scene: 3,
       opacity: 1,
       asset: 'screen3Desk',
       clipProgress: 0,
+      clipAutoplay: true,
+      clipSpeed: 0.65,
       spin: 0,
       floatTilt: 0,
     },
@@ -1104,6 +1106,32 @@ function AthoraScene({ modelState, hidden = false }) {
       material.needsUpdate = true;
     };
 
+    const tuneLineupMaterial = (material) => {
+      const name = material.name || '';
+      if (/^Base\.001$/i.test(name)) {
+        material.color?.set?.(0xf7f0dc);
+        if ('metalness' in material) material.metalness = 0.18;
+        if ('roughness' in material) material.roughness = 0.28;
+        if ('envMapIntensity' in material) material.envMapIntensity = 1.9;
+        if ('emissive' in material) material.emissive.set(0x8fc7ff);
+        if ('emissiveIntensity' in material) material.emissiveIntensity = 0.035;
+      }
+
+      if (/^Glow$/i.test(name)) {
+        material.color?.set?.(0xdce8ff);
+        if ('emissive' in material) material.emissive.set(0xbfd8ff);
+        if ('emissiveIntensity' in material) material.emissiveIntensity = 0.85;
+        if ('metalness' in material) material.metalness = 0;
+        if ('roughness' in material) material.roughness = 0.2;
+        if ('envMapIntensity' in material) material.envMapIntensity = 2.1;
+        material.transparent = true;
+        material.opacity = 0.78;
+        material.depthWrite = false;
+      }
+
+      material.needsUpdate = true;
+    };
+
     const prepareClone = (clone, targetHeight = 3.35, options = {}) => {
       const renderMaterials = [];
       clone.traverse((child) => {
@@ -1122,6 +1150,7 @@ function AthoraScene({ modelState, hidden = false }) {
             }
             clonedMaterials.forEach((material) => {
               tuneCanMaterial(material);
+              tuneLineupMaterial(material);
               material.transparent = material.transparent || material.opacity < 1;
               material.userData.baseOpacity = material.opacity ?? 1;
               material.userData.baseTransparent = material.transparent;
@@ -1351,86 +1380,84 @@ function AthoraScene({ modelState, hidden = false }) {
       warmupHandles.add(handle);
     };
 
-    loader.load(
-      '/blender-files/screens/1screen.glb',
-      (gltf) => {
-        const clone = gltf.scene.clone(true);
-        const helpers = [];
-        clone.traverse((child) => {
-          const materials = child.material ? (Array.isArray(child.material) ? child.material : [child.material]) : [];
-          const materialNames = materials.map((material) => material.name);
-          if (child.name === 'Cylinder.004' || materialNames.includes('Glow') || materialNames.includes('Base.001')) {
-            helpers.push(child);
-          }
-        });
-        helpers.forEach((child) => child.parent?.remove(child));
-        assetVariants.screen1 = prepareClone(clone, 3.35);
-        bindClipsToScroll(assetVariants.screen1, gltf.animations);
-        scheduleWarmVariant(assetVariants.screen1);
-      },
-      undefined,
-      () => {
-        assetVariants.screen1 = undefined;
-      }
-    );
+    // Temporarily disabled while replacement GLB files are being prepared.
+    // Flip this to true after updating the file paths below.
+    const USE_LEGACY_SCREEN_1_2_MODELS = false;
 
-    loader.load(
-      '/blender-files/screens/2screen-blue-orange-green.glb',
-      (gltf) => {
-        const createFlavorVariant = (flavorIndex) => {
+    if (USE_LEGACY_SCREEN_1_2_MODELS) {
+      loader.load(
+        '/blender-files/screens/1screen.glb',
+        (gltf) => {
           const clone = gltf.scene.clone(true);
-          const removableMeshes = [];
-
+          const helpers = [];
           clone.traverse((child) => {
-            if (!child.isMesh || !child.material) return;
-            const materials = Array.isArray(child.material) ? child.material : [child.material];
-            if (getFlavorIndex(child, materials) !== flavorIndex) {
-              removableMeshes.push(child);
+            const materials = child.material ? (Array.isArray(child.material) ? child.material : [child.material]) : [];
+            const materialNames = materials.map((material) => material.name);
+            if (child.name === 'Cylinder.004' || materialNames.includes('Glow') || materialNames.includes('Base.001')) {
+              helpers.push(child);
             }
           });
-          removableMeshes.forEach((child) => child.parent?.remove(child));
+          helpers.forEach((child) => child.parent?.remove(child));
+          assetVariants.screen1 = prepareClone(clone, 3.35);
+          bindClipsToScroll(assetVariants.screen1, gltf.animations);
+          scheduleWarmVariant(assetVariants.screen1);
+        },
+        undefined,
+        () => {
+          assetVariants.screen1 = undefined;
+        }
+      );
 
-          const variant = prepareClone(clone, 3.35);
-          // Keep each flavor in the exported base pose; the full GLB animation can move
-          // isolated cans outside our camera after we remove the other flavors.
-          return variant;
-        };
+      loader.load(
+        '/blender-files/screens/2screen-blue-orange-green.glb',
+        (gltf) => {
+          const createFlavorVariant = (flavorIndex) => {
+            const clone = gltf.scene.clone(true);
+            const removableMeshes = [];
 
-        assetVariants.screen2Orange = createFlavorVariant(1);
-        assetVariants.screen2Green = createFlavorVariant(2);
-        scheduleWarmVariant(assetVariants.screen2Orange, 260);
-        scheduleWarmVariant(assetVariants.screen2Green, 360);
-      },
-      undefined,
-      () => {
-        assetVariants.screen2Orange = undefined;
-        assetVariants.screen2Green = undefined;
-      }
-    );
+            clone.traverse((child) => {
+              if (!child.isMesh || !child.material) return;
+              const materials = Array.isArray(child.material) ? child.material : [child.material];
+              if (getFlavorIndex(child, materials) !== flavorIndex) {
+                removableMeshes.push(child);
+              }
+            });
+            removableMeshes.forEach((child) => child.parent?.remove(child));
+
+            const variant = prepareClone(clone, 3.35);
+            // Keep each flavor in the exported base pose; the full GLB animation can move
+            // isolated cans outside our camera after we remove the other flavors.
+            return variant;
+          };
+
+          assetVariants.screen2Orange = createFlavorVariant(1);
+          assetVariants.screen2Green = createFlavorVariant(2);
+          scheduleWarmVariant(assetVariants.screen2Orange, 260);
+          scheduleWarmVariant(assetVariants.screen2Green, 360);
+        },
+        undefined,
+        () => {
+          assetVariants.screen2Orange = undefined;
+          assetVariants.screen2Green = undefined;
+        }
+      );
+    }
 
     loader.load(
       '/blender-files/screens/3screen-on-desk-three.glb',
       (gltf) => {
         const clone = gltf.scene.clone(true);
-        const deskParts = [];
         const lineupOffsets = [
-          { match: /aluminium_can_250_ml005|250 ml\.005/i, x: -0.23, y: 0, z: 0 },
-          { match: /aluminium_can_250_ml006|250 ml\.006/i, x: 0.12, y: 0, z: 0 },
-          { match: /aluminium_can_250_ml007|250 ml\.007/i, x: 0.25, y: 0, z: 0 },
+          { match: /aluminium_can_250_ml005|250 ml\.005/i, x: 0 , y: 0, z: -0.01 },
+          { match: /aluminium_can_250_ml006|250 ml\.006/i, x: -0.005, y: 0, z: 0.03 },
+          { match: /aluminium_can_250_ml007|250 ml\.007/i, x: 0.005, y: 0, z: 0.03 },
         ];
         clone.traverse((child) => {
-          const materials = child.material ? (Array.isArray(child.material) ? child.material : [child.material]) : [];
-          const materialNames = materials.map((material) => material.name || '').join(' ');
-          if (/Cylinder\.?006|Cylinder\.?013/i.test(child.name) || /Glow|Base\.001/i.test(materialNames)) {
-            deskParts.push(child);
-            return;
-          }
           const offset = lineupOffsets.find(({ match }) => match.test(child.name));
           if (offset) {
             child.userData.lineupOffset = offset;
           }
         });
-        deskParts.forEach((child) => child.parent?.remove(child));
         assetVariants.screen3Desk = prepareClone(clone, 3.7);
         bindClipsToScroll(assetVariants.screen3Desk, gltf.animations);
         scheduleWarmVariant(assetVariants.screen3Desk, 520);
@@ -2313,7 +2340,6 @@ function ClaimStackSection({ section }) {
 function ProductLineupSection({ section }) {
   return (
     <section className={`panel lineup-panel figma-lineup-panel ${SECTION_THEMES[section.theme].className}`} id={section.id}>
-      <div className="lineup-desk" aria-hidden="true" />
       <img
         className="lineup-brand-wordmark lineup-brand-vector"
         src="/figma-lineup/athora-vector-wordmark.svg"
