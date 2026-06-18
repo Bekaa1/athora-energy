@@ -253,12 +253,12 @@ const sections = [
     theme: 'blue',
     modelState: {
       x: -2,
-      y: -0.06,
-      z: 3,
-      scale: 0.9,
-      rotate: 5,
-      tilt: 2,
-      pitch: 0,
+      y: 0,
+      z: 0,
+      scale: 1,
+      rotate: 0,
+      tilt: 0,
+      pitch: -0.1,
       scene: 3,
       opacity: 1,
       asset: 'screen4Fruit',
@@ -274,10 +274,10 @@ const sections = [
     headlineLines: ['1,000+ MG', 'ELECTROLYTES'],
     theme: 'blue',
     modelState: {
-      x: -2.92,
+      x: 4,
       y: -1.12,
       z: 0,
-      scale: 1.1,
+      scale: 2,
       rotate: -0.5,
       tilt: 0.1,
       pitch: 0.3,
@@ -1383,7 +1383,7 @@ function AthoraScene({ modelState, hidden = false }) {
         const electrolytesClone = gltf.scene.clone(true);
         assetVariants.screen4Fruit = prepareClone(fruitClone, 3.6, { normalizeAfterScale: true });
         assetVariants.screen4Electrolytes = prepareClone(electrolytesClone, 3.6, { normalizeAfterScale: true });
-        bindClipsToScroll(assetVariants.screen4Fruit, gltf.animations);
+        // Keep the fruit screen static so its modelState coordinates directly control placement.
         bindClipsToScroll(assetVariants.screen4Electrolytes, gltf.animations);
         scheduleWarmVariant(assetVariants.screen4Fruit, 620);
         scheduleWarmVariant(assetVariants.screen4Electrolytes, 700);
