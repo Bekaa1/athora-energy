@@ -758,6 +758,34 @@ main {
     inset -0.6px 3.1px 2.5px -1.9px rgba(255, 255, 255, 0.55);
 }
 
+.install-meter-css-progress .install-fill {
+  animation: install-fill-progress var(--preloader-progress-duration, 3000ms) linear forwards;
+}
+
+.install-meter-css-progress strong {
+  animation: install-label-progress var(--preloader-progress-duration, 3000ms) linear forwards;
+}
+
+@keyframes install-fill-progress {
+  from {
+    transform: translateZ(0) scaleX(var(--fill-scale-min));
+  }
+
+  to {
+    transform: translateZ(0) scaleX(0.985);
+  }
+}
+
+@keyframes install-label-progress {
+  from {
+    left: 0;
+  }
+
+  to {
+    left: calc(98.5% - 74.86px);
+  }
+}
+
 .install-meter-complete strong {
   right: 0;
   left: auto;
@@ -3048,6 +3076,20 @@ main {
     width: 70px;
     height: 40px;
     font-size: 13px;
+  }
+
+  .install-meter-css-progress strong {
+    animation-name: install-label-progress-mobile;
+  }
+
+  @keyframes install-label-progress-mobile {
+    from {
+      left: 0;
+    }
+
+    to {
+      left: calc(98.5% - 68.95px);
+    }
   }
 
   .install-copy {

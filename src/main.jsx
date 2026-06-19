@@ -390,7 +390,9 @@ const PRELOADER_COMPLETE_HOLD_MS = 1500;
 const PRELOADER_ASSET_WAIT_PROGRESS = 0.985;
 const PRELOADER_ASSET_FINISH_MS = 360;
 const PRELOADER_FORCE_COMPLETE_MS = 12000;
-const PRELOADER_SCENE_BOOT_DELAY_MS = 2600;
+const PRELOADER_SCENE_BOOT_DELAY_MS = 3050;
+const PRELOADER_ASSET_LOAD_START_DELAY_MS = 650;
+const CRITICAL_WARMUP_STAGGER_MS = 90;
 const DEFERRED_ASSET_LOAD_DELAY_MS = 1400;
 const CRITICAL_PRELOAD_IMAGE_SOURCES = [
   '/figma-hero/background-main.png',
@@ -1631,19 +1633,32 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       const pending = variants.filter(Boolean);
       let index = 0;
 
-      const run = () => {
+      const scheduleNext = (delay = 0) => {
         if (disposed) return;
         if (index >= pending.length) {
           notifyCriticalAssetsReady();
           return;
         }
 
-        warmVariant(pending[index]);
-        index += 1;
-        window.requestAnimationFrame(run);
+        let handle;
+        handle = {
+          type: 'timeout',
+          id: window.setTimeout(() => {
+            warmupHandles.delete(handle);
+            if (disposed) return;
+
+            window.requestAnimationFrame(() => {
+              if (disposed) return;
+              warmVariant(pending[index]);
+              index += 1;
+              scheduleNext(CRITICAL_WARMUP_STAGGER_MS);
+            });
+          }, delay),
+        };
+        warmupHandles.add(handle);
       };
 
-      window.requestAnimationFrame(run);
+      scheduleNext();
     };
 
     // Temporarily disabled while replacement GLB files are being prepared.
@@ -1731,9 +1746,11 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         assetVariants.screen2Blue = createFlavorVariant(0);
         assetVariants.screen2Orange = createFlavorVariant(1);
         assetVariants.screen2Green = createFlavorVariant(2);
-        warmCriticalVariants([assetVariants.screen2Blue]);
-        scheduleWarmVariant(assetVariants.screen2Orange, 520);
-        scheduleWarmVariant(assetVariants.screen2Green, 680);
+        warmCriticalVariants([
+          assetVariants.screen2Blue,
+          assetVariants.screen2Orange,
+          assetVariants.screen2Green,
+        ]);
       },
       undefined,
       () => {
@@ -2168,7 +2185,7 @@ function InstallSection({ section, onIntroReveal, criticalAssetsReady = false })
     let finishStartedAt = 0;
     let finishStartProgress = 0;
 
-    const renderProgress = (progressValue) => {
+    const renderProgress = (progressValue, useCssMotion = true) => {
       const safeProgress = clamp(progressValue, 0, 1);
       const progressPercent = safeProgress * 100;
       const nextLabelProgress = Math.round(progressPercent);
@@ -2176,6 +2193,7 @@ function InstallSection({ section, onIntroReveal, criticalAssetsReady = false })
       const label = progressLabelRef.current;
 
       if (meter) {
+        meter.classList.toggle('install-meter-css-progress', useCssMotion);
         meter.style.setProperty('--progress-ratio', safeProgress.toFixed(5));
         meter.setAttribute('aria-label', `Installation progress ${nextLabelProgress} percent`);
       }
@@ -2185,7 +2203,9 @@ function InstallSection({ section, onIntroReveal, criticalAssetsReady = false })
         const labelWidth = label.offsetWidth || 76;
         const travel = Math.max(meterWidth - labelWidth, 0);
 
-        label.style.transform = `translate3d(${(travel * safeProgress).toFixed(2)}px, -50%, 0)`;
+        label.style.transform = useCssMotion
+          ? 'translate3d(0, -50%, 0)'
+          : `translate3d(${(travel * safeProgress).toFixed(2)}px, -50%, 0)`;
 
         if (nextLabelProgress !== lastLabelProgress) {
           label.textContent = `${nextLabelProgress}%`;
@@ -2216,11 +2236,11 @@ function InstallSection({ section, onIntroReveal, criticalAssetsReady = false })
       }
 
       renderedProgress = Math.max(renderedProgress, progressValue);
-      renderProgress(renderedProgress);
+      renderProgress(renderedProgress, !finishStartedAt);
 
       if (renderedProgress >= 0.9995 && !completed) {
         completed = true;
-        renderProgress(1);
+        renderProgress(1, false);
         setIsComplete(true);
       }
 
@@ -2229,7 +2249,7 @@ function InstallSection({ section, onIntroReveal, criticalAssetsReady = false })
       }
     };
 
-    renderProgress(0);
+    renderProgress(0, true);
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, []);
@@ -2268,7 +2288,7 @@ function InstallSection({ section, onIntroReveal, criticalAssetsReady = false })
       <AthoraLogo large />
       <div
         ref={meterRef}
-        className="install-meter"
+        className="install-meter install-meter-css-progress"
         aria-label="Installation progress 0 percent"
         style={{ '--progress-ratio': '0' }}
       >
@@ -3079,16 +3099,18 @@ function LandingApp() {
 
   useEffect(() => {
     let cancelled = false;
-
-    Promise.all([
-      ...CRITICAL_PRELOAD_IMAGE_SOURCES.map(preloadImageSource),
-      ...CRITICAL_PRELOAD_BINARY_SOURCES.map(preloadBinarySource),
-    ]).then(() => {
-      if (!cancelled) setCriticalImagesReady(true);
-    });
+    const timer = window.setTimeout(() => {
+      Promise.all([
+        ...CRITICAL_PRELOAD_IMAGE_SOURCES.map(preloadImageSource),
+        ...CRITICAL_PRELOAD_BINARY_SOURCES.map(preloadBinarySource),
+      ]).then(() => {
+        if (!cancelled) setCriticalImagesReady(true);
+      });
+    }, PRELOADER_ASSET_LOAD_START_DELAY_MS);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, []);
 
