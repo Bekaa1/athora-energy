@@ -390,12 +390,19 @@ const PRELOADER_COMPLETE_HOLD_MS = 1500;
 const PRELOADER_ASSET_WAIT_PROGRESS = 0.985;
 const PRELOADER_ASSET_FINISH_MS = 360;
 const PRELOADER_FORCE_COMPLETE_MS = 12000;
+const PRELOADER_SCENE_BOOT_DELAY_MS = 2600;
+const DEFERRED_ASSET_LOAD_DELAY_MS = 1400;
 const CRITICAL_PRELOAD_IMAGE_SOURCES = [
   '/figma-hero/background-main.png',
   '/figma-hero/berry-right.svg',
   '/figma-hero/image-3.svg',
   '/figma-hero/berry-center.svg',
 ];
+const CRITICAL_PRELOAD_BINARY_SOURCES = [
+  '/blender-files/screens/2screen-blue-orange-green.glb',
+];
+
+THREE.Cache.enabled = true;
 
 function preloadImageSource(src) {
   return new Promise((resolve) => {
@@ -411,6 +418,14 @@ function preloadImageSource(src) {
     };
     image.onerror = done;
     image.src = src;
+  });
+}
+
+function preloadBinarySource(src) {
+  return new Promise((resolve) => {
+    const loader = new THREE.FileLoader();
+    loader.setResponseType('arraybuffer');
+    loader.load(src, () => resolve(src), undefined, () => resolve(src));
   });
 }
 
@@ -1148,6 +1163,7 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
     const warmupHandles = new Set();
     let activeVariants = new Set();
     let criticalAssetsReadySent = false;
+    let deferredAssetLoadsScheduled = false;
     let disposed = false;
 
     const loader = new GLTFLoader();
@@ -1503,10 +1519,113 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       criticalAssetsReadySent = true;
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
-          if (!disposed) onCriticalAssetsReadyRef.current?.();
+          if (!disposed) {
+            onCriticalAssetsReadyRef.current?.();
+            scheduleDeferredAssetLoads();
+          }
         });
       });
     };
+
+    const loadDeferredAssetVariants = () => {
+      if (disposed) return;
+
+      loader.load(
+        '/blender-files/screens/3screen-on-desk-three.glb',
+        (gltf) => {
+          if (disposed) return;
+          const clone = gltf.scene.clone(true);
+          const lineupOffsets = [
+            { match: /aluminium_can_250_ml005|250 ml\.005/i, x: 0 , y: 0, z: -0.01 },
+            { match: /aluminium_can_250_ml006|250 ml\.006/i, x: -0.005, y: 0, z: 0.03 },
+            { match: /aluminium_can_250_ml007|250 ml\.007/i, x: 0.005, y: 0, z: 0.03 },
+          ];
+          clone.traverse((child) => {
+            if (/Cylinder\.006|Cylinder\.013/i.test(child.name)) {
+              child.userData.lineupRole = 'lineup-platform';
+            } else if (/aluminium can 250 ml\.005|250 ml\.005/i.test(child.name)) {
+              child.userData.lineupRole = 'lineup-focus';
+            } else if (/aluminium can 250 ml\.006|aluminium can 250 ml\.007|250 ml\.006|250 ml\.007/i.test(child.name)) {
+              child.userData.lineupRole = 'lineup-side';
+            }
+
+            const offset = lineupOffsets.find(({ match }) => match.test(child.name));
+            if (offset) {
+              child.userData.lineupOffset = offset;
+            }
+          });
+          assetVariants.screen3Desk = prepareClone(clone, 3.7);
+          bindClipsToScroll(assetVariants.screen3Desk, gltf.animations);
+          scheduleWarmVariant(assetVariants.screen3Desk, 520);
+        },
+        undefined,
+        () => {
+          assetVariants.screen3Desk = undefined;
+        }
+      );
+
+      loader.load(
+        '/blender-files/screens/4screen-divided-by-two.glb',
+        (gltf) => {
+          if (disposed) return;
+          const fruitClone = gltf.scene.clone(true);
+          const electrolytesClone = gltf.scene.clone(true);
+          const fruitVariant = prepareClone(fruitClone, 3.6, { normalizeAfterScale: true });
+          const electrolytesVariant = prepareClone(electrolytesClone, 3.6, { normalizeAfterScale: true });
+          // Keep these screens static and wrap them so scale does not change their screen position.
+          applyStaticClipPose(electrolytesVariant, gltf.animations, 1);
+          recenterVariantToVisibleBounds(electrolytesVariant);
+          assetVariants.screen4Fruit = wrapVariantWithStablePivot(fruitVariant);
+          assetVariants.screen4Electrolytes = wrapVariantWithStablePivot(electrolytesVariant);
+          scheduleWarmVariant(assetVariants.screen4Fruit, 620);
+          scheduleWarmVariant(assetVariants.screen4Electrolytes, 700);
+        },
+        undefined,
+        () => {
+          assetVariants.screen4Fruit = undefined;
+          assetVariants.screen4Electrolytes = undefined;
+        }
+      );
+
+      loader.load(
+        '/blender-files/screens/last-screen.glb',
+        (gltf) => {
+          if (disposed) return;
+          const clone = gltf.scene.clone(true);
+          assetVariants.lastScreen = prepareClone(clone, 3.6, { normalizeAfterScale: true });
+          bindClipsToScroll(assetVariants.lastScreen, gltf.animations);
+          scheduleWarmVariant(assetVariants.lastScreen, 780);
+        },
+        undefined,
+        () => {
+          assetVariants.lastScreen = undefined;
+        }
+      );
+    };
+
+    function scheduleDeferredAssetLoads() {
+      if (disposed || deferredAssetLoadsScheduled) return;
+      deferredAssetLoadsScheduled = true;
+
+      const run = () => {
+        if (disposed) return;
+        if ('requestIdleCallback' in window) {
+          const handle = {
+            type: 'idle',
+            id: window.requestIdleCallback(loadDeferredAssetVariants, { timeout: 2200 }),
+          };
+          warmupHandles.add(handle);
+        } else {
+          loadDeferredAssetVariants();
+        }
+      };
+
+      const handle = {
+        type: 'timeout',
+        id: window.setTimeout(run, DEFERRED_ASSET_LOAD_DELAY_MS),
+      };
+      warmupHandles.add(handle);
+    }
 
     const warmCriticalVariants = (variants) => {
       const pending = variants.filter(Boolean);
@@ -1612,11 +1731,9 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         assetVariants.screen2Blue = createFlavorVariant(0);
         assetVariants.screen2Orange = createFlavorVariant(1);
         assetVariants.screen2Green = createFlavorVariant(2);
-        warmCriticalVariants([
-          assetVariants.screen2Blue,
-          assetVariants.screen2Orange,
-          assetVariants.screen2Green,
-        ]);
+        warmCriticalVariants([assetVariants.screen2Blue]);
+        scheduleWarmVariant(assetVariants.screen2Orange, 520);
+        scheduleWarmVariant(assetVariants.screen2Green, 680);
       },
       undefined,
       () => {
@@ -1624,75 +1741,6 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         assetVariants.screen2Orange = undefined;
         assetVariants.screen2Green = undefined;
         notifyCriticalAssetsReady();
-      }
-    );
-
-    loader.load(
-      '/blender-files/screens/3screen-on-desk-three.glb',
-      (gltf) => {
-        const clone = gltf.scene.clone(true);
-        const lineupOffsets = [
-          { match: /aluminium_can_250_ml005|250 ml\.005/i, x: 0 , y: 0, z: -0.01 },
-          { match: /aluminium_can_250_ml006|250 ml\.006/i, x: -0.005, y: 0, z: 0.03 },
-          { match: /aluminium_can_250_ml007|250 ml\.007/i, x: 0.005, y: 0, z: 0.03 },
-        ];
-        clone.traverse((child) => {
-          if (/Cylinder\.006|Cylinder\.013/i.test(child.name)) {
-            child.userData.lineupRole = 'lineup-platform';
-          } else if (/aluminium can 250 ml\.005|250 ml\.005/i.test(child.name)) {
-            child.userData.lineupRole = 'lineup-focus';
-          } else if (/aluminium can 250 ml\.006|aluminium can 250 ml\.007|250 ml\.006|250 ml\.007/i.test(child.name)) {
-            child.userData.lineupRole = 'lineup-side';
-          }
-
-          const offset = lineupOffsets.find(({ match }) => match.test(child.name));
-          if (offset) {
-            child.userData.lineupOffset = offset;
-          }
-        });
-        assetVariants.screen3Desk = prepareClone(clone, 3.7);
-        bindClipsToScroll(assetVariants.screen3Desk, gltf.animations);
-        scheduleWarmVariant(assetVariants.screen3Desk, 520);
-      },
-      undefined,
-      () => {
-        assetVariants.screen3Desk = undefined;
-      }
-    );
-
-    loader.load(
-      '/blender-files/screens/4screen-divided-by-two.glb',
-      (gltf) => {
-        const fruitClone = gltf.scene.clone(true);
-        const electrolytesClone = gltf.scene.clone(true);
-        const fruitVariant = prepareClone(fruitClone, 3.6, { normalizeAfterScale: true });
-        const electrolytesVariant = prepareClone(electrolytesClone, 3.6, { normalizeAfterScale: true });
-        // Keep these screens static and wrap them so scale does not change their screen position.
-        applyStaticClipPose(electrolytesVariant, gltf.animations, 1);
-        recenterVariantToVisibleBounds(electrolytesVariant);
-        assetVariants.screen4Fruit = wrapVariantWithStablePivot(fruitVariant);
-        assetVariants.screen4Electrolytes = wrapVariantWithStablePivot(electrolytesVariant);
-        scheduleWarmVariant(assetVariants.screen4Fruit, 620);
-        scheduleWarmVariant(assetVariants.screen4Electrolytes, 700);
-      },
-      undefined,
-      () => {
-        assetVariants.screen4Fruit = undefined;
-        assetVariants.screen4Electrolytes = undefined;
-      }
-    );
-
-    loader.load(
-      '/blender-files/screens/last-screen.glb',
-      (gltf) => {
-        const clone = gltf.scene.clone(true);
-        assetVariants.lastScreen = prepareClone(clone, 3.6, { normalizeAfterScale: true });
-        bindClipsToScroll(assetVariants.lastScreen, gltf.animations);
-        scheduleWarmVariant(assetVariants.lastScreen, 780);
-      },
-      undefined,
-      () => {
-        assetVariants.lastScreen = undefined;
       }
     );
 
@@ -3014,6 +3062,7 @@ function LandingApp() {
   const [preloaderLocked, setPreloaderLocked] = useState(false);
   const [introRevealPhase, setIntroRevealPhase] = useState('idle');
   const [introSceneHeld, setIntroSceneHeld] = useState(false);
+  const [sceneBootAllowed, setSceneBootAllowed] = useState(false);
   const [criticalSceneReady, setCriticalSceneReady] = useState(false);
   const [criticalImagesReady, setCriticalImagesReady] = useState(false);
   const introRevealPhaseRef = useRef('idle');
@@ -3031,13 +3080,24 @@ function LandingApp() {
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all(CRITICAL_PRELOAD_IMAGE_SOURCES.map(preloadImageSource)).then(() => {
+    Promise.all([
+      ...CRITICAL_PRELOAD_IMAGE_SOURCES.map(preloadImageSource),
+      ...CRITICAL_PRELOAD_BINARY_SOURCES.map(preloadBinarySource),
+    ]).then(() => {
       if (!cancelled) setCriticalImagesReady(true);
     });
 
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSceneBootAllowed(true);
+    }, PRELOADER_SCENE_BOOT_DELAY_MS);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -3135,11 +3195,13 @@ function LandingApp() {
         }
       />
       <FixedDetailMorphBackground visible={showDetailMorphBg} />
-      <AthoraScene
-        modelState={modelState}
-        hidden={hideSceneDuringIntroReveal}
-        onCriticalAssetsReady={markCriticalSceneReady}
-      />
+      {sceneBootAllowed ? (
+        <AthoraScene
+          modelState={modelState}
+          hidden={hideSceneDuringIntroReveal}
+          onCriticalAssetsReady={markCriticalSceneReady}
+        />
+      ) : null}
       <Navigation activeIndex={activeIndex} showNav={showNav} preloaderLocked={preloaderLocked} />
       <PreloaderTransitionOverlay phase={introRevealPhase} />
       <main>
