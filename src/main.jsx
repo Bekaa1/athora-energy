@@ -394,6 +394,11 @@ const PRELOADER_SCENE_BOOT_DELAY_MS = 3050;
 const PRELOADER_ASSET_LOAD_START_DELAY_MS = 650;
 const CRITICAL_WARMUP_STAGGER_MS = 90;
 const DEFERRED_ASSET_LOAD_DELAY_MS = 1400;
+const STEP_SCROLL_SELECTOR = '.panel, .systems-step-snap, .claim-stack-snap, .price-stack-snap';
+const STEP_SCROLL_WHEEL_THRESHOLD = 8;
+const STEP_SCROLL_TOUCH_THRESHOLD = 34;
+const STEP_SCROLL_SETTLE_MS = 180;
+const STEP_SCROLL_MAX_LOCK_MS = 1500;
 const CRITICAL_PRELOAD_IMAGE_SOURCES = [
   '/figma-hero/background-main.png',
   '/figma-hero/berry-right.svg',
@@ -1078,6 +1083,185 @@ function usePreloaderScrollLock(enabled) {
       window.removeEventListener('keydown', preventPreloaderKey);
       window.removeEventListener('touchstart', rememberTouchStart);
       window.removeEventListener('touchmove', preventPreloaderTouch);
+    };
+  }, [enabled]);
+}
+
+function useControlledStepScroll(enabled) {
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    let settleFrame = 0;
+    let maxLockTimer = 0;
+    let locked = false;
+    let lockedTargetTop = null;
+    let lastInputAt = 0;
+    let touchStartY = 0;
+    let touchStepConsumed = false;
+
+    const isEditableTarget = (target) =>
+      Boolean(target?.closest?.('input, textarea, select, [contenteditable="true"]'));
+
+    const getMaxScroll = () => Math.max(document.documentElement.scrollHeight - window.innerHeight, 0);
+
+    const getStepTargets = () => {
+      const maxScroll = getMaxScroll();
+      const rawTargets = Array.from(document.querySelectorAll(STEP_SCROLL_SELECTOR))
+        .filter((element) => element.id !== 'installing')
+        .map((element) => Math.round(window.scrollY + element.getBoundingClientRect().top))
+        .filter((top) => top > 0 && top <= maxScroll + 2)
+        .map((top) => clamp(top, 0, maxScroll));
+
+      rawTargets.push(maxScroll);
+
+      return rawTargets
+        .map((top) => Math.round(top))
+        .sort((a, b) => a - b)
+        .filter((top, index, targets) => index === 0 || Math.abs(top - targets[index - 1]) > 4);
+    };
+
+    const getNextTarget = (direction) => {
+      const currentTop = Math.round(window.scrollY);
+      const targets = getStepTargets();
+      const threshold = 8;
+
+      if (direction > 0) {
+        return targets.find((top) => top > currentTop + threshold) ?? null;
+      }
+
+      for (let index = targets.length - 1; index >= 0; index -= 1) {
+        if (targets[index] < currentTop - threshold) return targets[index];
+      }
+
+      return null;
+    };
+
+    const unlock = () => {
+      locked = false;
+      lockedTargetTop = null;
+      window.cancelAnimationFrame(settleFrame);
+      window.clearTimeout(maxLockTimer);
+    };
+
+    const watchTargetSettlement = () => {
+      window.cancelAnimationFrame(settleFrame);
+      window.clearTimeout(maxLockTimer);
+
+      const startedAt = performance.now();
+
+      const check = () => {
+        if (!locked) return;
+
+        const nearTarget = lockedTargetTop === null || Math.abs(window.scrollY - lockedTargetTop) <= 3;
+        const inputIsIdle = performance.now() - lastInputAt >= STEP_SCROLL_SETTLE_MS;
+        const expired = performance.now() - startedAt >= STEP_SCROLL_MAX_LOCK_MS;
+
+        if ((nearTarget && inputIsIdle) || expired) {
+          unlock();
+          return;
+        }
+
+        settleFrame = window.requestAnimationFrame(check);
+      };
+
+      maxLockTimer = window.setTimeout(unlock, STEP_SCROLL_MAX_LOCK_MS + STEP_SCROLL_SETTLE_MS + 120);
+      settleFrame = window.requestAnimationFrame(check);
+    };
+
+    const moveOneStep = (direction) => {
+      lastInputAt = performance.now();
+
+      if (locked) return true;
+
+      const targetTop = getNextTarget(direction);
+      if (targetTop === null) return false;
+
+      locked = true;
+      lockedTargetTop = targetTop;
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({ top: targetTop, left: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+      watchTargetSettlement();
+
+      return true;
+    };
+
+    const handleWheel = (event) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || isEditableTarget(event.target)) return;
+
+      const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+      if (Math.abs(delta) < STEP_SCROLL_WHEEL_THRESHOLD) return;
+
+      if (locked) {
+        lastInputAt = performance.now();
+        event.preventDefault();
+        return;
+      }
+
+      if (moveOneStep(delta > 0 ? 1 : -1)) {
+        event.preventDefault();
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.defaultPrevented || isEditableTarget(event.target)) return;
+
+      const directionByKey = {
+        ArrowDown: 1,
+        PageDown: 1,
+        Space: event.shiftKey ? -1 : 1,
+        ArrowUp: -1,
+        PageUp: -1,
+      };
+      const direction = directionByKey[event.code] ?? directionByKey[event.key];
+      if (!direction) return;
+
+      if (locked) {
+        lastInputAt = performance.now();
+        event.preventDefault();
+        return;
+      }
+
+      if (moveOneStep(direction)) {
+        event.preventDefault();
+      }
+    };
+
+    const handleTouchStart = (event) => {
+      touchStartY = event.touches[0]?.clientY ?? 0;
+      touchStepConsumed = false;
+    };
+
+    const handleTouchMove = (event) => {
+      if (event.defaultPrevented || isEditableTarget(event.target)) return;
+
+      const currentY = event.touches[0]?.clientY ?? touchStartY;
+      const deltaY = touchStartY - currentY;
+
+      if (locked) {
+        lastInputAt = performance.now();
+        event.preventDefault();
+        return;
+      }
+
+      if (touchStepConsumed || Math.abs(deltaY) < STEP_SCROLL_TOUCH_THRESHOLD) return;
+
+      touchStepConsumed = true;
+      if (moveOneStep(deltaY > 0 ? 1 : -1)) {
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      unlock();
+      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
     };
   }, [enabled]);
 }
@@ -3131,6 +3315,7 @@ function LandingApp() {
   }, []);
 
   usePreloaderScrollLock(preloaderLocked);
+  useControlledStepScroll(preloaderLocked && introRevealPhase === 'done');
 
   const startIntroReveal = useCallback(() => {
     if (introRevealPhaseRef.current !== 'idle') return;
