@@ -335,7 +335,9 @@ const sections = [
     id: 'fruit',
     type: 'nutrition',
     variant: 'fruit',
-    modelTransitionStart: 1,
+    modelTransitionStart: 0.84,
+    modelTransitionEase: 'smooth',
+    modelTransitionMode: 'clipOnly',
     stackItems: [
       { id: 'real-fruit', label: 'Real Fruit' },
       { id: 'calories', label: '40 Calories' },
@@ -353,6 +355,7 @@ const sections = [
       scene: 3,
       opacity: 1,
       asset: 'screen4Fruit',
+      visualCenterLockStrength: 0,
       clipProgress: SCREEN4_CLIP.fruitSettled,
       spin: 0,
       floatTilt: 0,
@@ -375,17 +378,18 @@ const sections = [
     modelTransitionStart: 1,
     theme: 'blue',
     modelState: {
-      x: 3,
-      y: -0.7,
+      x: -5.5,
+      y: -0.8,
       z: 0,
-      scale: 1.3,
-      rotate: -0.3,
-      tilt: 0.05 , // отвечает за вертикальность банки
-      pitch: 0.2,
+      scale: 1.2,
+      rotate: 0,
+      tilt: 0 , // отвечает за вертикальность банки
+      pitch: -0.1,
       scene: 3,
       opacity: 1,
-      asset: 'screen4Electrolytes',
-      clipProgress: 1,
+      asset: 'screen4Fruit',
+      clipProgress: SCREEN4_CLIP.electrolytes,
+      visualCenterLockStrength: 0,
       spin: 0,
       floatTilt: 0,
     },
@@ -716,6 +720,11 @@ function interpolateState(a, b, t) {
     clipIdleLoopSpeed: t < assetSwitchAt ? a.clipIdleLoopSpeed : b.clipIdleLoopSpeed,
     lockAnimatedPositions: t < assetSwitchAt ? a.lockAnimatedPositions : b.lockAnimatedPositions,
     lockVisualCenter: t < assetSwitchAt ? a.lockVisualCenter : b.lockVisualCenter,
+    visualCenterLockStrength: lerp(
+      a.visualCenterLockStrength ?? (a.lockVisualCenter ? 1 : 0),
+      b.visualCenterLockStrength ?? (b.lockVisualCenter ? 1 : 0),
+      t
+    ),
     visibleFlavors: getInterpolatedVisibleFlavors(a, b, t, assetSwitchAt),
     flavorProgress: lerp(a.flavorProgress ?? 0, b.flavorProgress ?? a.flavorProgress ?? 0, t),
     asset: t < assetSwitchAt ? a.asset : b.asset,
@@ -856,10 +865,28 @@ function useScrollModelState() {
             : modelTransitionStart > 0
               ? clamp((sectionProgress - modelTransitionStart) / Math.max(1 - modelTransitionStart, 0.001), 0, 1)
               : sectionProgress;
+        const easedModelProgress = currentSection.modelTransitionEase === 'smooth'
+          ? smoothstep(0, 1, modelProgress)
+          : modelProgress;
         const totalScrollable = Math.max(document.documentElement.scrollHeight - sectionHeight, 1);
         const showNav = scrollY >= sectionHeight * 0.72 || window.location.hash === '#intro';
 
-        let interpolatedModelState = interpolateState(current, next, modelProgress);
+        let interpolatedModelState = interpolateState(current, next, easedModelProgress);
+        if (currentSection.modelTransitionMode === 'clipOnly' && modelProgress > 0) {
+          interpolatedModelState = {
+            ...interpolatedModelState,
+            x: current.x,
+            y: current.y,
+            z: current.z,
+            scale: current.scale,
+            rotate: current.rotate,
+            tilt: current.tilt,
+            pitch: current.pitch,
+            spin: current.spin,
+            floatTilt: current.floatTilt,
+            visualCenterLockStrength: current.visualCenterLockStrength,
+          };
+        }
         if (currentSection.systemsSequence?.length) {
           const sequenceProgress = getSystemsSequenceProgress(currentSection, sectionProgress);
           const from = sequenceProgress.sequence[sequenceProgress.fromIndex]?.modelState || current;
@@ -992,6 +1019,8 @@ function useScrollModelState() {
           rawSectionProgress,
           sectionProgress,
           scrollDirection,
+          modelProgress,
+          easedModelProgress,
           modelState: interpolatedModelState,
         };
 
@@ -2090,6 +2119,9 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       const baseScale = variant.userData.baseScale || new THREE.Vector3(1, 1, 1);
       const baseRotation = variant.userData.baseRotation || new THREE.Euler();
       const lockViewportPosition = state.lockViewportPosition || state.asset === 'lastScreen';
+      const visualCenterLockStrength = state.asset === 'lastScreen'
+        ? 1
+        : clamp(state.visualCenterLockStrength ?? (state.lockVisualCenter ? 1 : 0), 0, 1);
       const liveScale = state.scale * viewportScale * (lockViewportPosition ? 1 : 1 + Math.sin(elapsed * 1.5) * 0.012);
       const targetPosition = new THREE.Vector3(
         basePosition.x + state.x,
@@ -2123,21 +2155,21 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         variant.rotation.z = lerp(variant.rotation.z, targetRotationZ, 0.07);
       }
 
-      if ((state.lockVisualCenter || state.asset === 'lastScreen') && lockViewportPosition) {
+      if (visualCenterLockStrength > 0 && lockViewportPosition) {
         variant.updateMatrixWorld(true);
         visualLockBox.setFromObject(variant);
         visualLockBox.getCenter(visualLockCenter);
-        variant.position.x += targetPosition.x - visualLockCenter.x;
-        variant.position.y += targetPosition.y - visualLockCenter.y;
-        variant.position.z += targetPosition.z - visualLockCenter.z;
+        variant.position.x += (targetPosition.x - visualLockCenter.x) * visualCenterLockStrength;
+        variant.position.y += (targetPosition.y - visualLockCenter.y) * visualCenterLockStrength;
+        variant.position.z += (targetPosition.z - visualLockCenter.z) * visualCenterLockStrength;
         variant.updateMatrixWorld(true);
-      } else if (state.lockVisualCenter || state.asset === 'lastScreen') {
+      } else if (visualCenterLockStrength > 0) {
         variant.updateMatrixWorld(true);
         visualLockBox.setFromObject(variant);
         visualLockBox.getCenter(visualLockCenter);
-        variant.position.x += targetPosition.x - visualLockCenter.x;
-        variant.position.y += targetPosition.y - visualLockCenter.y;
-        variant.position.z += targetPosition.z - visualLockCenter.z;
+        variant.position.x += (targetPosition.x - visualLockCenter.x) * visualCenterLockStrength;
+        variant.position.y += (targetPosition.y - visualLockCenter.y) * visualCenterLockStrength;
+        variant.position.z += (targetPosition.z - visualLockCenter.z) * visualCenterLockStrength;
         variant.updateMatrixWorld(true);
       }
 
