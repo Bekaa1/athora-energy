@@ -32,6 +32,86 @@ const SECTION_THEMES = {
   },
 };
 
+const SCREEN2_CLIP = {
+  blue: 0,
+  orange: 4.5 / 8,
+  green: 6 / 8,
+};
+
+const SCREEN2_TILTED_STATE = {
+  x: 1.6,
+  y: -0.96,
+  z: 0,
+  scale: 1.75,
+  rotate: -0.64,
+  tilt: -0.25,
+  pitch: -0.15,
+  spin: 0,
+  floatTilt: 0.01,
+};
+
+const SCREEN2_VERTICAL_STATES = {
+  blue: {
+    x: 0,
+    y: -0.065,
+    z: 0,
+    scale: 0.9,
+    rotate: 0,
+    tilt: 0,
+    pitch: 0,
+    spin: 0,
+    floatTilt: 0,
+  },
+  orange: {
+    x: 0,
+    y: -0.065,
+    z: 0,
+    scale: 1.2,
+    rotate: 0,
+    tilt: 0,
+    pitch: 0,
+    spin: 0,
+    floatTilt: 0,
+  },
+  green: {
+    x: 0,
+    y: -0.065,
+    z: 0,
+    scale: 1.2,
+    rotate: 0,
+    tilt: 0,
+    pitch: 0,
+    spin: 0,
+    floatTilt: 0,
+  },
+};
+
+const SCREEN2_DEFAULT_MATERIALS = {
+  aluminum: {
+    color: 0xe7eef0,
+    metalness: 1,
+    roughness: 0.94,
+    envMapIntensity: 2.75,
+  },
+  canBody: {
+    color: 0xffffff,
+    metalness: 0.45,
+    roughness: 0.8,
+    envMapIntensity: 1.5,
+    clearcoat: 0.5,
+    clearcoatRoughness: 0.09,
+    reflectivity: 0.62,
+  },
+};
+
+const SCREEN2_VERTICAL_MATERIALS = {
+  blue: SCREEN2_DEFAULT_MATERIALS,
+  orange: SCREEN2_DEFAULT_MATERIALS,
+  green: SCREEN2_DEFAULT_MATERIALS,
+};
+
+const SCREEN2_TILTED_MATERIALS = SCREEN2_DEFAULT_MATERIALS;
+
 const sections = [
   {
     id: 'installing',
@@ -48,19 +128,11 @@ const sections = [
     subcopy: 'Scroll down',
     theme: 'blue',
     modelState: {
-      x: 0,
-      y: -0.065,
-      z: 0,
-      scale: 0.86,
-      rotate: 0,
-      tilt: 0,
+      ...SCREEN2_VERTICAL_STATES.blue,
       scene: 3,
       opacity: 1,
-      asset: 'screen2Blue',
+      asset: 'screen2VerticalBlue',
       assetSwitchAt: 1.01,
-      clipProgress: 0,
-      spin: 0,
-      floatTilt: 0,
     },
   },
   {
@@ -75,94 +147,54 @@ const sections = [
       {
         theme: 'blue',
         modelState: {
-          x: 1.34,
-          y: -0.92,
-          z: 0,
-          scale: 1.38,
-          rotate: -0.64,
-          tilt: -0.42,
-          pitch: -0.4,
+          ...SCREEN2_TILTED_STATE,
           scene: 3,
           opacity: 1,
-          asset: 'screen2Blue',
+          asset: 'screen2AnimatedStack',
           assetSwitchAt: 0.03,
-          clipProgress: 0,
-          spin: 0,
-          floatTilt: 0.01,
+          clipProgress: SCREEN2_CLIP.blue,
         },
       },
       {
         theme: 'orange',
         modelState: {
-          x: 0.14,
-          y: -0.32,
-          z: 0,
-          scale: 1.78,
-          rotate: -0.64,
-          tilt: -0.42,
-          pitch: -0.4,
+          ...SCREEN2_TILTED_STATE,
           scene: 3,
           opacity: 1,
-          asset: 'screen2Orange',
+          asset: 'screen2AnimatedStack',
           assetSwitchAt: 0.03,
-          clipProgress: 0,
-          spin: 0,
-          floatTilt: 0.01,
+          clipProgress: SCREEN2_CLIP.orange,
         },
       },
       {
         theme: 'green',
         modelState: {
-          x: -2.1,
-          y: 0.8,
-          z: 0,
-          scale: 2.2,
-          rotate: -0.64,
-          tilt: -0.42,
-          pitch: -0.4,
+          ...SCREEN2_TILTED_STATE,
           scene: 3,
           opacity: 1,
-          asset: 'screen2Green',
+          asset: 'screen2AnimatedStack',
           assetSwitchAt: 0.03,
-          clipProgress: 0,
-          spin: 0,
-          floatTilt: 0.01,
+          clipProgress: SCREEN2_CLIP.green,
         },
       },
       {
         theme: 'green',
         modelState: {
-          x: -2.1,
-          y: 0.8,
-          z: 0,
-          scale: 2.2,
-          rotate: -0.64,
-          tilt: -0.42,
-          pitch: -0.4,
+          ...SCREEN2_TILTED_STATE,
           scene: 3,
           opacity: 1,
-          asset: 'screen2Green',
-          clipProgress: 0,
-          spin: 0,
-          floatTilt: 0.01,
+          asset: 'screen2AnimatedStack',
+          clipProgress: SCREEN2_CLIP.green,
         },
       },
     ],
     modelTransitionStart: 0.82,
     modelState: {
-      x: 1.34,
-      y: -0.92,
-      z: 0,
-      scale: 1.38,
-      rotate: -0.64,
-      tilt: -0.42,
-      pitch: -0.4,
+      ...SCREEN2_TILTED_STATE,
       scene: 3,
       opacity: 1,
-      asset: 'screen2Blue',
-      clipProgress: 0,
-      spin: 0,
-      floatTilt: 0.01,
+      asset: 'screen2AnimatedStack',
+      clipProgress: SCREEN2_CLIP.blue,
     },
   },
   {
@@ -1366,9 +1398,16 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
 
     const loader = new GLTFLoader();
     const getFlavorIndex = (mesh, materials) => {
+      const ancestorNames = [];
+      let parent = mesh.parent;
+      while (parent) {
+        ancestorNames.push(parent.name || '');
+        parent = parent.parent;
+      }
+
       const names = [
         mesh.name,
-        mesh.parent?.name,
+        ...ancestorNames,
         ...materials.map((material) => material.name || ''),
       ].join(' ');
       if (/blue|Cylinder002|250_ml002/i.test(names)) return 0;
@@ -1377,7 +1416,17 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       return null;
     };
 
-    const tuneCanMaterial = (material) => {
+    const applyMaterialSettings = (material, settings = {}) => {
+      Object.entries(settings).forEach(([key, value]) => {
+        if (key === 'color') {
+          material.color?.set?.(value);
+        } else if (key in material) {
+          material[key] = value;
+        }
+      });
+    };
+
+    const tuneCanMaterial = (material, materialProfile = SCREEN2_DEFAULT_MATERIALS) => {
       const name = material.name || '';
       const isAluminum = /aluminum|aluminium|scuffed/i.test(name);
       const isCanBody = /blue|orange|green/i.test(name);
@@ -1392,20 +1441,11 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       material.envMap = environmentTexture;
 
       if (isAluminum) {
-        material.color?.set?.(0xe7eef0);
-        if ('metalness' in material) material.metalness = 1;
-        if ('roughness' in material) material.roughness = 0.94;
-        if ('envMapIntensity' in material) material.envMapIntensity = 2.75;
+        applyMaterialSettings(material, materialProfile.aluminum);
       }
 
       if (isCanBody) {
-        material.color?.set?.(0xffffff);
-        if ('metalness' in material) material.metalness = 0.45//Math.max(material.metalness ?? 0, 0.14);
-        if ('roughness' in material) material.roughness = 0.8//Math.min(material.roughness ?? 0.54, 0.28);
-        if ('envMapIntensity' in material) material.envMapIntensity = 1.5;
-        if ('clearcoat' in material) material.clearcoat = 0.5;
-        if ('clearcoatRoughness' in material) material.clearcoatRoughness = 0.09;
-        if ('reflectivity' in material) material.reflectivity = 0.62;
+        applyMaterialSettings(material, materialProfile.canBody);
       }
 
       material.needsUpdate = true;
@@ -1454,7 +1494,7 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
               child.userData.flavorIndex = flavorIndex;
             }
             clonedMaterials.forEach((material) => {
-              tuneCanMaterial(material);
+              tuneCanMaterial(material, options.materialProfile);
               tuneLineupMaterial(material);
               material.transparent = material.transparent || material.opacity < 1;
               material.userData.baseOpacity = material.opacity ?? 1;
@@ -1647,7 +1687,9 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         boundAnimation.mixer.setTime(loopTime);
         variant.userData.lastClipProgress = null;
         poseKey = `idle:${Math.round(loopTime * 1000)}`;
-      } else if (Math.abs((variant.userData.lastClipProgress ?? -1) - clipProgress) > 0.001) {
+      } else if (
+        Math.abs((variant.userData.lastClipProgress ?? -1) - clipProgress) > 0.001
+      ) {
         boundAnimation.mixer.setTime(boundAnimation.duration * clipProgress);
         variant.userData.lastClipProgress = clipProgress;
       }
@@ -1879,73 +1921,10 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       scheduleNext();
     };
 
-    // Temporarily disabled while replacement GLB files are being prepared.
-    // Flip this to true after updating the file paths below.
-    const USE_LEGACY_SCREEN_1_2_MODELS = false;
-
-    if (USE_LEGACY_SCREEN_1_2_MODELS) {
-      loader.load(
-        '/blender-files/screens/1screen.glb',
-        (gltf) => {
-          const clone = gltf.scene.clone(true);
-          const helpers = [];
-          clone.traverse((child) => {
-            const materials = child.material ? (Array.isArray(child.material) ? child.material : [child.material]) : [];
-            const materialNames = materials.map((material) => material.name);
-            if (child.name === 'Cylinder.004' || materialNames.includes('Glow') || materialNames.includes('Base.001')) {
-              helpers.push(child);
-            }
-          });
-          helpers.forEach((child) => child.parent?.remove(child));
-          assetVariants.screen1 = prepareClone(clone, 3.35);
-          bindClipsToScroll(assetVariants.screen1, gltf.animations);
-          scheduleWarmVariant(assetVariants.screen1);
-        },
-        undefined,
-        () => {
-          assetVariants.screen1 = undefined;
-        }
-      );
-
-      loader.load(
-        '/blender-files/screens/2screen-blue-orange-green.glb',
-        (gltf) => {
-          const createFlavorVariant = (flavorIndex) => {
-            const clone = gltf.scene.clone(true);
-            const removableMeshes = [];
-
-            clone.traverse((child) => {
-              if (!child.isMesh || !child.material) return;
-              const materials = Array.isArray(child.material) ? child.material : [child.material];
-              if (getFlavorIndex(child, materials) !== flavorIndex) {
-                removableMeshes.push(child);
-              }
-            });
-            removableMeshes.forEach((child) => child.parent?.remove(child));
-
-            const variant = prepareClone(clone, 3.35);
-            // Keep each flavor in the exported base pose; the full GLB animation can move
-            // isolated cans outside our camera after we remove the other flavors.
-            return variant;
-          };
-
-          assetVariants.screen2Orange = createFlavorVariant(1);
-          assetVariants.screen2Green = createFlavorVariant(2);
-          scheduleWarmVariant(assetVariants.screen2Orange, 260);
-          scheduleWarmVariant(assetVariants.screen2Green, 360);
-        },
-        undefined,
-        () => {
-          assetVariants.screen2Orange = undefined;
-          assetVariants.screen2Green = undefined;
-        }
-      );
-    }
-
     loader.load(
       '/blender-files/screens/2screen-blue-orange-green.glb',
       (gltf) => {
-        const createFlavorVariant = (flavorIndex) => {
+        const createVerticalVariant = (flavorIndex, materialProfile) => {
           const clone = gltf.scene.clone(true);
           const removableMeshes = [];
 
@@ -1958,23 +1937,32 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
           });
           removableMeshes.forEach((child) => child.parent?.remove(child));
 
-          return prepareClone(clone, 3.35);
+          return prepareClone(clone, 3.35, { materialProfile });
         };
 
-        assetVariants.screen2Blue = createFlavorVariant(0);
-        assetVariants.screen2Orange = createFlavorVariant(1);
-        assetVariants.screen2Green = createFlavorVariant(2);
+        assetVariants.screen2VerticalBlue = createVerticalVariant(0, SCREEN2_VERTICAL_MATERIALS.blue);
+        assetVariants.screen2VerticalOrange = createVerticalVariant(1, SCREEN2_VERTICAL_MATERIALS.orange);
+        assetVariants.screen2VerticalGreen = createVerticalVariant(2, SCREEN2_VERTICAL_MATERIALS.green);
+
+        const animatedClone = gltf.scene.clone(true);
+        assetVariants.screen2AnimatedStack = prepareClone(animatedClone, 3.35, {
+          materialProfile: SCREEN2_TILTED_MATERIALS,
+        });
+        bindClipsToScroll(assetVariants.screen2AnimatedStack, gltf.animations);
+
         warmCriticalVariants([
-          assetVariants.screen2Blue,
-          assetVariants.screen2Orange,
-          assetVariants.screen2Green,
+          assetVariants.screen2VerticalBlue,
+          assetVariants.screen2AnimatedStack,
         ]);
+        scheduleWarmVariant(assetVariants.screen2VerticalOrange, 260);
+        scheduleWarmVariant(assetVariants.screen2VerticalGreen, 360);
       },
       undefined,
       () => {
-        assetVariants.screen2Blue = undefined;
-        assetVariants.screen2Orange = undefined;
-        assetVariants.screen2Green = undefined;
+        assetVariants.screen2VerticalBlue = undefined;
+        assetVariants.screen2VerticalOrange = undefined;
+        assetVariants.screen2VerticalGreen = undefined;
+        assetVariants.screen2AnimatedStack = undefined;
         notifyCriticalAssetsReady();
       }
     );
