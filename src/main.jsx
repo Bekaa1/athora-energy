@@ -376,6 +376,8 @@ const sections = [
       clipProgress: 0,
       clipAutoplay: true,
       clipSpeed: 1,
+      lockAnimatedPositions: true,
+      lockVisualCenter: true,
       spin: 0,
       floatTilt: 0,
     },
@@ -401,7 +403,7 @@ const STEP_SCROLL_SETTLE_MS = 180;
 const STEP_SCROLL_MAX_LOCK_MS = 1500;
 const CRITICAL_PRELOAD_IMAGE_SOURCES = [
   '/figma-hero/background-main.png',
-  '/figma-hero/berry-right.svg',
+  '/figma-hero/berry-right.png',
   '/figma-hero/image-3.svg',
   '/figma-hero/berry-center.svg',
 ];
@@ -652,6 +654,8 @@ function interpolateState(a, b, t) {
     clipIdleLoopStart: t < assetSwitchAt ? a.clipIdleLoopStart : b.clipIdleLoopStart,
     clipIdleLoopEnd: t < assetSwitchAt ? a.clipIdleLoopEnd : b.clipIdleLoopEnd,
     clipIdleLoopSpeed: t < assetSwitchAt ? a.clipIdleLoopSpeed : b.clipIdleLoopSpeed,
+    lockAnimatedPositions: t < assetSwitchAt ? a.lockAnimatedPositions : b.lockAnimatedPositions,
+    lockVisualCenter: t < assetSwitchAt ? a.lockVisualCenter : b.lockVisualCenter,
     flavorProgress: lerp(a.flavorProgress ?? 0, b.flavorProgress ?? a.flavorProgress ?? 0, t),
     asset: t < assetSwitchAt ? a.asset : b.asset,
     scene: t < 0.5 ? a.scene : b.scene,
@@ -902,6 +906,14 @@ function useScrollModelState() {
               entryMotion: undefined,
             };
           }
+        }
+
+        if (currentSection.id === 'access') {
+          interpolatedModelState = {
+            ...currentSection.modelState,
+            lockAnimatedPositions: true,
+            lockVisualCenter: true,
+          };
         }
 
         const nextState = {
@@ -1475,7 +1487,13 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       return clone;
     };
 
-    const bindClipsToScroll = (object, clips = []) => {
+    const lockLocalPositions = (object) => {
+      object.traverse((child) => {
+        child.userData.lockedLocalPosition = child.position.clone();
+      });
+    };
+
+    const bindClipsToScroll = (object, clips = [], options = {}) => {
       if (!clips.length) return;
 
       const nodeNames = new Set();
@@ -1486,6 +1504,7 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         .map((clip) => {
           const validTracks = clip.tracks.filter((track) => {
             const targetName = track.name.split('.')[0];
+            if (options.excludePositionTracks && track.name.toLowerCase().includes('position')) return false;
             return !targetName || nodeNames.has(targetName);
           });
 
@@ -1596,9 +1615,19 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       const boundAnimation = animationMixers.get(variant);
       if (!boundAnimation) return;
 
+      const restoreLockedPositions = () => {
+        if (!(targetState.lockAnimatedPositions || targetState.asset === 'lastScreen')) return;
+
+        variant.traverse((child) => {
+          const lockedPosition = child.userData.lockedLocalPosition;
+          if (lockedPosition) child.position.copy(lockedPosition);
+        });
+      };
+
       if (targetState.clipAutoplay) {
         const speed = targetState.clipSpeed ?? 1;
         boundAnimation.mixer.update(delta * speed);
+        restoreLockedPositions();
         variant.userData.lastClipProgress = null;
         return;
       }
@@ -1639,6 +1668,8 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
           );
         }
       });
+
+      restoreLockedPositions();
     };
 
     const warmVariant = (variant) => {
@@ -1779,7 +1810,10 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
           if (disposed) return;
           const clone = gltf.scene.clone(true);
           assetVariants.lastScreen = prepareClone(clone, 3.6, { normalizeAfterScale: true });
-          bindClipsToScroll(assetVariants.lastScreen, gltf.animations);
+          lockLocalPositions(assetVariants.lastScreen);
+          bindClipsToScroll(assetVariants.lastScreen, gltf.animations, {
+            excludePositionTracks: true,
+          });
           scheduleWarmVariant(assetVariants.lastScreen, 780);
         },
         undefined,
@@ -1976,6 +2010,8 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
     window.addEventListener('resize', resize);
 
     const clock = new THREE.Clock();
+    const visualLockBox = new THREE.Box3();
+    const visualLockCenter = new THREE.Vector3();
     let raf = 0;
     let wasShowingModel = false;
     const entryMotionState = {
@@ -2009,14 +2045,24 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         variant.scale.copy(targetScale);
         variant.rotation.set(targetRotationX, targetRotationY, targetRotationZ);
         variant.userData.renderInitialized = true;
-        return;
+      } else {
+        variant.position.lerp(targetPosition, 0.08);
+        variant.scale.lerp(targetScale, 0.08);
+        variant.rotation.x = lerp(variant.rotation.x, targetRotationX, 0.07);
+        variant.rotation.y = lerp(variant.rotation.y, targetRotationY, 0.07);
+        variant.rotation.z = lerp(variant.rotation.z, targetRotationZ, 0.07);
       }
 
-      variant.position.lerp(targetPosition, 0.08);
-      variant.scale.lerp(targetScale, 0.08);
-      variant.rotation.x = lerp(variant.rotation.x, targetRotationX, 0.07);
-      variant.rotation.y = lerp(variant.rotation.y, targetRotationY, 0.07);
-      variant.rotation.z = lerp(variant.rotation.z, targetRotationZ, 0.07);
+      if (state.lockVisualCenter || state.asset === 'lastScreen') {
+        variant.updateMatrixWorld(true);
+        visualLockBox.setFromObject(variant);
+        visualLockBox.getCenter(visualLockCenter);
+        variant.position.x += targetPosition.x - visualLockCenter.x;
+        variant.position.y += targetPosition.y - visualLockCenter.y;
+        variant.position.z += targetPosition.z - visualLockCenter.z;
+        variant.updateMatrixWorld(true);
+      }
+
     };
 
     const animate = () => {
@@ -2279,7 +2325,7 @@ function FigmaHeroBackground() {
     <div className="figma-hero-bg" aria-hidden="true">
       <div className="figma-hero-bg-canvas">
         <img className="figma-bg-base" src="/figma-hero/background-main.png" alt="" />
-        <img className="figma-bg-berry" src="/figma-hero/berry-right.svg" alt="" />
+        <img className="figma-bg-berry" src="/figma-hero/berry-right.png" alt="" />
       </div>
     </div>
   );
@@ -2523,7 +2569,6 @@ function IntroSection({ section, isActive }) {
         </button>
       </div>
       */}
-      <p className="intro-scroll">{section.subcopy}</p>
     </section>
   );
 }
@@ -2565,7 +2610,7 @@ function SystemsSection({ section }) {
                       opacity,
                       color: `rgba(255, 255, 255, ${colorAlpha})`,
                       filter: blur > 0 ? `blur(${blur}px)` : 'none',
-                      textShadow: isActiveWord ? '0 1.366px 35.516px rgba(4, 14, 36, 0.22)' : 'none',
+                      textShadow: 'none',
                       transform: `translate3d(0, ${distance * 1.11}em, 0)`,
                     }
                   : undefined
@@ -2756,6 +2801,7 @@ function ClaimStackSection({ section }) {
   const stackRef = useRef(null);
   const claims = section.claims || [];
   const progress = usePinnedStackProgress(stackRef, claims.length);
+  const animatedProgress = useSmoothedProgress(progress, 520, 'linear');
 
   return (
     <section
@@ -2779,12 +2825,11 @@ function ClaimStackSection({ section }) {
             const desktopLines = claim.headlineLines || [claim.headline];
             const mobileLines = claim.mobileHeadlineLines || desktopLines;
             const hasMobileLines = Boolean(claim.mobileHeadlineLines);
-            const distance = index - progress;
+            const distance = index - animatedProgress;
             const absDistance = Math.abs(distance);
-            const opacity = clamp(1 - absDistance * 1.55, 0, 1);
-            const translateY = distance * 112;
-            const scale = 1 - Math.min(absDistance * 0.035, 0.06);
-            const blur = Math.min(absDistance * 7, 9);
+            const opacity = clamp(1 - absDistance * 1.65, 0, 1);
+            const translateY = distance * 48;
+            const blur = Math.min(absDistance * 6, 8);
 
             return (
               <h2
@@ -2794,7 +2839,7 @@ function ClaimStackSection({ section }) {
                 style={{
                   opacity,
                   filter: `blur(${blur}px)`,
-                  transform: `translate3d(-50%, calc(-50% + ${translateY}vh), 0) scale(${scale})`,
+                  transform: `translate3d(-50%, calc(-50% + ${translateY}px), 0)`,
                 }}
               >
                 <span className="claim-line-set claim-line-set-desktop">
@@ -2881,6 +2926,7 @@ function PriceStackSection({ section }) {
   const valueSequence = section.valueSequence || prices.map((price) => price.value);
   const valueProgress = animatedProgress * Math.max(valueSequence.length - 1, 0);
   const labelProgress = animatedProgress;
+  const finalValueTighten = smoothstep(valueSequence.length - 2.15, valueSequence.length - 1, valueProgress);
 
   return (
     <section
@@ -2932,10 +2978,11 @@ function PriceStackSection({ section }) {
               valueSequence[valueSequence.length - 1] || finalPrice?.value || ''
             } per day`}
           >
-            <span className="price-currency" aria-hidden="true">
-              $
-            </span>
-            <span className="price-value-window" aria-hidden="true">
+            <span className="price-leading-value" style={{ transform: `translate3d(${finalValueTighten * 0.34}em, 0, 0)` }}>
+              <span className="price-currency" aria-hidden="true">
+                $
+              </span>
+              <span className="price-value-window" aria-hidden="true">
               {valueSequence.map((value, index) => {
                 const distance = index - valueProgress;
                 const absDistance = Math.abs(distance);
@@ -2955,6 +3002,7 @@ function PriceStackSection({ section }) {
                   </span>
                 );
               })}
+              </span>
             </span>
             <span className="price-suffix" aria-hidden="true">
               / DAY
@@ -3084,7 +3132,15 @@ function AccessSection({ section }) {
 }
 
 function ScrollDown() {
-  return <p className="scroll-down">Scroll down</p>;
+  return null;
+}
+
+function FixedScrollDown({ visible }) {
+  return (
+    <p className={`fixed-scroll-down ${visible ? 'fixed-scroll-down-visible' : ''}`} aria-hidden={!visible}>
+      Scroll down
+    </p>
+  );
 }
 
 function LegalBodyBlock({ block, index }) {
@@ -3317,6 +3373,33 @@ function LandingApp() {
   usePreloaderScrollLock(preloaderLocked);
   useControlledStepScroll(preloaderLocked && introRevealPhase === 'done');
 
+  useLayoutEffect(() => {
+    if (!preloaderLocked || introRevealPhase !== 'done') return undefined;
+
+    const intro = document.getElementById('intro');
+    const root = document.documentElement;
+    const previousScrollBehavior = root.style.scrollBehavior;
+
+    root.style.scrollBehavior = 'auto';
+
+    const scrollPastPreloader = () => {
+      const introTop = intro ? intro.offsetTop : 0;
+      window.scrollTo({ top: introTop, left: 0, behavior: 'auto' });
+    };
+
+    const raf = window.requestAnimationFrame(scrollPastPreloader);
+    const timer = window.setTimeout(() => {
+      scrollPastPreloader();
+      root.style.scrollBehavior = previousScrollBehavior;
+    }, 80);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+      root.style.scrollBehavior = previousScrollBehavior;
+    };
+  }, [preloaderLocked, introRevealPhase]);
+
   const startIntroReveal = useCallback(() => {
     if (introRevealPhaseRef.current !== 'idle') return;
 
@@ -3380,7 +3463,7 @@ function LandingApp() {
 
   return (
     <div
-      className="app"
+      className={`app ${preloaderLocked ? 'app-preloader-locked' : ''}`}
       style={{
         '--active-primary': activeTheme.primary,
         '--active-secondary': activeTheme.secondary,
@@ -3410,6 +3493,7 @@ function LandingApp() {
         />
       ) : null}
       <Navigation activeIndex={activeIndex} showNav={showNav} preloaderLocked={preloaderLocked} />
+      <FixedScrollDown visible={preloaderLocked && introRevealPhase === 'done' && activeSection?.id !== 'access'} />
       <PreloaderTransitionOverlay phase={introRevealPhase} />
       <main>
         {sections.map((section, index) => (

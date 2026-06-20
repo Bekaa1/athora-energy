@@ -38,6 +38,7 @@ html {
   scroll-behavior: smooth;
   scroll-snap-type: y mandatory;
   scrollbar-width: none;
+  overscroll-behavior: none;
 }
 
 body {
@@ -46,6 +47,7 @@ body {
   overflow-x: hidden;
   background: #061dff;
   scrollbar-width: none;
+  overscroll-behavior: none;
 }
 
 body::-webkit-scrollbar {
@@ -81,6 +83,7 @@ a {
 .app {
   min-height: 100vh;
   background: var(--active-primary, #061dff);
+  overscroll-behavior: none;
 }
 
 .scene {
@@ -541,6 +544,22 @@ main {
   gap: 30px;
   grid-auto-rows: max-content;
   padding: 0;
+}
+
+.app-preloader-locked .install-panel {
+  min-height: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  scroll-snap-align: none;
+}
+
+.app-preloader-locked .install-panel > * {
+  display: none;
 }
 
 .install-panel .athora-logo-large {
@@ -1070,7 +1089,8 @@ main {
 }
 
 .intro-scroll,
-.scroll-down {
+.scroll-down,
+.fixed-scroll-down {
   margin: 0;
   color: #fff;
   text-transform: uppercase;
@@ -1359,7 +1379,7 @@ main {
   color: #fff;
   filter: none;
   opacity: 1;
-  text-shadow: 0 1.366px 35.516px rgba(4, 14, 36, 0.22);
+  text-shadow: none;
 }
 
 .systems-panel-figma .systems-list .systems-word-1 {
@@ -1657,6 +1677,29 @@ main {
   transform: translateX(-50%);
   font-size: 13px;
   letter-spacing: 0.09em;
+}
+
+.fixed-scroll-down {
+  position: fixed;
+  z-index: 6;
+  left: 50%;
+  bottom: 64px;
+  transform: translate3d(-50%, 0, 0);
+  font-size: 13px;
+  letter-spacing: 0.09em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 260ms ease;
+  will-change: opacity;
+}
+
+.fixed-scroll-down-visible {
+  opacity: 1;
+}
+
+body.is-step-scroll-transitioning .fixed-scroll-down {
+  z-index: 2;
 }
 
 .figma-lineup-panel {
@@ -2047,12 +2090,20 @@ main {
 .price-value-window {
   position: relative;
   display: inline-block;
-  width: 2.08em;
+  width: 1.68em;
   height: 1.03em;
   overflow: hidden;
   text-align: left;
   transform: translateY(0.24em);
   vertical-align: baseline;
+}
+
+.price-leading-value {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.18em;
+  will-change: transform;
 }
 
 .price-value-number {
@@ -2621,16 +2672,21 @@ main {
 .legal-document {
   scroll-behavior: auto;
   scroll-snap-type: none;
+  overscroll-behavior: auto;
+  overflow-y: auto;
 }
 
 .legal-document body {
   background: #061dff;
+  overscroll-behavior: auto;
+  overflow-y: auto;
 }
 
 .legal-page {
   position: relative;
   min-height: max(var(--legal-height), 100vh);
   overflow-x: hidden;
+  overscroll-behavior: auto;
   color: #fff;
   background: #061dff;
   font-family: var(--font-display);
@@ -3097,7 +3153,8 @@ main {
     letter-spacing: 1.35px;
   }
 
-  .scroll-down {
+  .scroll-down,
+  .fixed-scroll-down {
     font-size: 12px;
   }
 
