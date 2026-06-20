@@ -526,6 +526,15 @@ main {
   font-size: clamp(48px, 6.9vw, 86px);
 }
 
+.athora-logo-wordmark {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+}
+
 .install-panel::before {
   background:
     radial-gradient(ellipse 48% 44% at 50% 72%, rgba(0, 255, 242, 0.52) 0%, rgba(0, 225, 242, 0.24) 42%, rgba(0, 28, 255, 0) 74%),
@@ -563,7 +572,12 @@ main {
 }
 
 .install-panel .athora-logo-large {
-  width: fit-content;
+  width: min(351px, 82vw);
+  max-width: 82vw;
+}
+
+.intro-reveal-ui .athora-logo-large {
+  width: min(351px, 82vw);
   max-width: 82vw;
 }
 
@@ -636,7 +650,7 @@ main {
 }
 
 .intro-reveal-ui .athora-logo-large {
-  width: fit-content;
+  width: min(351px, 82vw);
   max-width: 82vw;
 }
 
@@ -3103,7 +3117,7 @@ body.is-step-scroll-transitioning .fixed-scroll-down {
   }
 
   .install-panel .athora-logo-large {
-    width: fit-content;
+    width: min(314px, 82vw);
     max-width: 82vw;
   }
 
@@ -3112,7 +3126,7 @@ body.is-step-scroll-transitioning .fixed-scroll-down {
   }
 
   .intro-reveal-ui .athora-logo-large {
-    width: fit-content;
+    width: min(314px, 82vw);
     max-width: 82vw;
   }
 

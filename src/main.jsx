@@ -2226,7 +2226,7 @@ function createFallbackCan() {
   return group;
 }
 
-function ChromeDots({ homeHref = '#intro' }) {
+function ChromeDots({ homeHref = '#intro', onHomeClick }) {
   const socials = [
     { label: 'Instagram', icon: '/figma-nav/social-instagram.svg' },
     { label: 'X', icon: '/figma-nav/social-x.svg' },
@@ -2236,7 +2236,7 @@ function ChromeDots({ homeHref = '#intro' }) {
   return (
     <div className="chrome-dots" aria-label="Social links">
       {socials.map((item) => (
-        <a className="social-button" href={homeHref} aria-label={item.label} key={item.label}>
+        <a className="social-button" href={homeHref} aria-label={item.label} key={item.label} onClick={onHomeClick}>
           <img src={item.icon} alt="" aria-hidden="true" />
         </a>
       ))}
@@ -2244,10 +2244,23 @@ function ChromeDots({ homeHref = '#intro' }) {
   );
 }
 
-function AthoraLogo({ large = false, className = '' }) {
+function AthoraLogo({
+  large = false,
+  className = '',
+  asImage = false,
+  wordmarkSrc = '/figma-lineup/athora-access-vector-wordmark.svg',
+}) {
   return (
     <div className={`${large ? 'athora-logo athora-logo-large' : 'athora-logo'} ${className}`.trim()} aria-label="ATHORA">
-      <span className="athora-logo-text">ATHORA</span>
+      {asImage ? (
+        <img
+          className="athora-logo-wordmark"
+          src={wordmarkSrc}
+          alt="ATHORA"
+        />
+      ) : (
+        <span className="athora-logo-text">ATHORA</span>
+      )}
     </div>
   );
 }
@@ -2355,11 +2368,61 @@ function FixedDetailMorphBackground({ visible }) {
   return <div className={`detail-morph-bg ${visible ? 'detail-morph-bg-visible' : ''}`} aria-hidden="true" />;
 }
 
+function skipLongScrollToSection(event, sectionId) {
+  const target = document.getElementById(sectionId);
+  if (!target) return;
+
+  event?.preventDefault();
+
+  const root = document.documentElement;
+  const previousScrollBehavior = root.style.scrollBehavior;
+  const previousSnapType = root.style.scrollSnapType;
+  const targetTop = window.scrollY + target.getBoundingClientRect().top;
+  const currentTop = window.scrollY;
+  const maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 0);
+  const distance = targetTop - currentTop;
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (window.location.hash !== `#${sectionId}`) {
+    window.history.pushState(null, '', `#${sectionId}`);
+  }
+
+  root.style.scrollBehavior = 'auto';
+  root.style.scrollSnapType = 'none';
+
+  if (Math.abs(distance) > window.innerHeight * 1.35 && !prefersReducedMotion) {
+    const stagingOffset = Math.min(window.innerHeight * 0.42, 380);
+    const stagingTop = clamp(
+      targetTop + (distance < 0 ? stagingOffset : -stagingOffset),
+      0,
+      maxScroll
+    );
+
+    window.scrollTo({ top: stagingTop, left: 0, behavior: 'auto' });
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        root.style.scrollBehavior = previousScrollBehavior;
+        window.scrollTo({ top: targetTop, left: 0, behavior: 'smooth' });
+      });
+    });
+  } else {
+    window.scrollTo({ top: targetTop, left: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+  }
+
+  window.setTimeout(() => {
+    root.style.scrollBehavior = previousScrollBehavior;
+    root.style.scrollSnapType = previousSnapType;
+  }, prefersReducedMotion ? 80 : 720);
+}
+
 function Navigation({ activeIndex = 0, showNav, preloaderLocked, legal = false }) {
   const homeHref = legal ? '/' : preloaderLocked ? '#intro' : '#installing';
   const productHref = legal ? '/#all-systems' : '#all-systems';
   const systemHref = legal ? '/#simplicity' : '#simplicity';
   const accessHref = legal ? '/#access' : '#access';
+  const handleHomeClick = !legal && preloaderLocked
+    ? (event) => skipLongScrollToSection(event, 'intro')
+    : undefined;
 
   return (
     <header className={showNav ? 'site-nav' : 'site-nav site-nav-hidden'}>
@@ -2374,8 +2437,8 @@ function Navigation({ activeIndex = 0, showNav, preloaderLocked, legal = false }
       </div>
       <div className="nav-liquid-field" aria-hidden="true" />
       <NavFrameGlass />
-      <ChromeDots homeHref={homeHref} />
-      <a className="nav-mark" href={homeHref} aria-label="ATHORA home">
+      <ChromeDots homeHref={homeHref} onHomeClick={handleHomeClick} />
+      <a className="nav-mark" href={homeHref} aria-label="ATHORA home" onClick={handleHomeClick}>
         {/*
         <img src="/figma-nav/nav-union.svg" alt="" aria-hidden="true" />
         */}
@@ -2515,7 +2578,7 @@ function InstallSection({ section, onIntroReveal, criticalAssetsReady = false })
         preload="auto"
         aria-hidden="true"
       />
-      <AthoraLogo large />
+      <AthoraLogo large asImage wordmarkSrc="/figma-lineup/athora-preloader-wordmark.svg" />
       <div
         ref={meterRef}
         className="install-meter install-meter-css-progress"
@@ -2536,7 +2599,7 @@ function PreloaderTransitionOverlay({ phase }) {
   return (
     <div className={`intro-reveal-overlay intro-reveal-overlay-${phase}`} aria-hidden="true">
       <div className="intro-reveal-ui">
-        <AthoraLogo large />
+        <AthoraLogo large asImage wordmarkSrc="/figma-lineup/athora-preloader-wordmark.svg" />
         <div className="install-meter install-meter-complete" aria-label="Installation progress 100 percent" style={{ '--progress-ratio': '1' }}>
           <div className="install-fill" />
           <strong>100%</strong>
