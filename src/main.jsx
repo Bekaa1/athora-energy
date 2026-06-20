@@ -38,6 +38,12 @@ const SCREEN2_CLIP = {
   green: 6 / 8,
 };
 
+const SCREEN2_FLAVOR_INDEX = {
+  blue: 0,
+  orange: 1,
+  green: 2,
+};
+
 const SCREEN2_TILTED_STATE = {
   x: 1.6,
   y: -0.96,
@@ -110,6 +116,13 @@ const SCREEN2_VERTICAL_MATERIALS = {
   green: SCREEN2_DEFAULT_MATERIALS,
 };
 
+const SCREEN4_CLIP = {
+  fruitStart: 0,
+  fruitSettled: 4 / 12.083333,
+  electrolytes: 9.35 / 12.083333,
+  rollOut: 1,
+};
+
 const SCREEN2_TILTED_MATERIALS = SCREEN2_DEFAULT_MATERIALS;
 
 const sections = [
@@ -153,6 +166,7 @@ const sections = [
           asset: 'screen2AnimatedStack',
           assetSwitchAt: 0.03,
           clipProgress: SCREEN2_CLIP.blue,
+          visibleFlavors: ['blue'],
         },
       },
       {
@@ -164,6 +178,7 @@ const sections = [
           asset: 'screen2AnimatedStack',
           assetSwitchAt: 0.03,
           clipProgress: SCREEN2_CLIP.orange,
+          visibleFlavors: ['orange'],
         },
       },
       {
@@ -175,6 +190,7 @@ const sections = [
           asset: 'screen2AnimatedStack',
           assetSwitchAt: 0.03,
           clipProgress: SCREEN2_CLIP.green,
+          visibleFlavors: ['green'],
         },
       },
       {
@@ -185,6 +201,7 @@ const sections = [
           opacity: 1,
           asset: 'screen2AnimatedStack',
           clipProgress: SCREEN2_CLIP.green,
+          visibleFlavors: ['green'],
         },
       },
     ],
@@ -195,6 +212,7 @@ const sections = [
       opacity: 1,
       asset: 'screen2AnimatedStack',
       clipProgress: SCREEN2_CLIP.blue,
+      visibleFlavors: ['blue'],
     },
   },
   {
@@ -320,12 +338,12 @@ const sections = [
     modelTransitionStart: 1,
     stackItems: [
       { id: 'real-fruit', label: 'Real Fruit' },
-      { id: 'zero-added', label: ['zero added', 'sugar'], active: true },
       { id: 'calories', label: '40 Calories' },
+      { id: 'zero-added', label: ['zero added', 'sugar'] },
     ],
     theme: 'blue',
     modelState: {
-      x: -2,
+      x: -9,
       y: 0,
       z: 0,
       scale: 1,
@@ -335,22 +353,16 @@ const sections = [
       scene: 3,
       opacity: 1,
       asset: 'screen4Fruit',
-      clipProgress: 0,
+      clipProgress: SCREEN4_CLIP.fruitSettled,
       spin: 0,
       floatTilt: 0,
       entryMotion: {
-        id: 'fruit-roll-in',
+        id: 'fruit-glb-roll-in',
         mode: 'time',
-        duration: 0.78,
-        range: 0.28,
+        duration: 2,
         from: {
-          x: -3.45,
-          y: -0.02,
-          scale: 0.58,
-          rotate: -0.38,
-          tilt: -0.28,
-          pitch: -0.04,
-          opacity: 0,
+          clipProgress: SCREEN4_CLIP.fruitStart,
+          opacity: 1,
         },
       },
     },
@@ -396,9 +408,9 @@ const sections = [
     theme: 'blue',
     modelState: {
       x: 2,
-      y: 0.5,
+      y: 0.1,
       z: 0,
-      scale: 0.7,
+      scale: 0.9,
       rotate: -0.32,
       tilt: 0,
       pitch: 0,
@@ -410,6 +422,7 @@ const sections = [
       clipSpeed: 1,
       lockAnimatedPositions: true,
       lockVisualCenter: true,
+      lockViewportPosition: true,
       spin: 0,
       floatTilt: 0,
     },
@@ -428,7 +441,7 @@ const PRELOADER_SCENE_BOOT_DELAY_MS = 3050;
 const PRELOADER_ASSET_LOAD_START_DELAY_MS = 650;
 const CRITICAL_WARMUP_STAGGER_MS = 90;
 const DEFERRED_ASSET_LOAD_DELAY_MS = 1400;
-const STEP_SCROLL_SELECTOR = '.panel, .systems-step-snap, .claim-stack-snap, .price-stack-snap';
+const STEP_SCROLL_SELECTOR = '.panel, .systems-step-snap, .claim-stack-snap, .price-stack-snap, .nutrition-stack-snap';
 const STEP_SCROLL_WHEEL_THRESHOLD = 8;
 const STEP_SCROLL_TOUCH_THRESHOLD = 34;
 const STEP_SCROLL_SETTLE_MS = 180;
@@ -665,6 +678,21 @@ function getSystemsSequenceProgress(section, sectionProgress) {
   };
 }
 
+function getInterpolatedVisibleFlavors(a, b, t, assetSwitchAt) {
+  const fromFlavors = a.visibleFlavors;
+  const toFlavors = b.visibleFlavors;
+
+  if (!fromFlavors && !toFlavors) return undefined;
+  if (t <= 0.001) return fromFlavors ?? toFlavors;
+  if (t >= 0.999) return toFlavors ?? fromFlavors;
+
+  if (fromFlavors?.length && toFlavors?.length) {
+    return [...new Set([...fromFlavors, ...toFlavors])];
+  }
+
+  return t < assetSwitchAt ? fromFlavors : toFlavors;
+}
+
 function interpolateState(a, b, t) {
   const assetSwitchAt = a.assetSwitchAt ?? 0.5;
 
@@ -688,6 +716,7 @@ function interpolateState(a, b, t) {
     clipIdleLoopSpeed: t < assetSwitchAt ? a.clipIdleLoopSpeed : b.clipIdleLoopSpeed,
     lockAnimatedPositions: t < assetSwitchAt ? a.lockAnimatedPositions : b.lockAnimatedPositions,
     lockVisualCenter: t < assetSwitchAt ? a.lockVisualCenter : b.lockVisualCenter,
+    visibleFlavors: getInterpolatedVisibleFlavors(a, b, t, assetSwitchAt),
     flavorProgress: lerp(a.flavorProgress ?? 0, b.flavorProgress ?? a.flavorProgress ?? 0, t),
     asset: t < assetSwitchAt ? a.asset : b.asset,
     scene: t < 0.5 ? a.scene : b.scene,
@@ -1479,6 +1508,7 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
 
     const prepareClone = (clone, targetHeight = 3.35, options = {}) => {
       const renderMaterials = [];
+      const flavorMeshes = [];
       clone.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
@@ -1492,6 +1522,7 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
             const flavorIndex = options.flavorDriven ? getFlavorIndex(child, clonedMaterials) : null;
             if (flavorIndex !== null) {
               child.userData.flavorIndex = flavorIndex;
+              flavorMeshes.push(child);
             }
             clonedMaterials.forEach((material) => {
               tuneCanMaterial(material, options.materialProfile);
@@ -1499,6 +1530,7 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
               material.transparent = material.transparent || material.opacity < 1;
               material.userData.baseOpacity = material.opacity ?? 1;
               material.userData.baseTransparent = material.transparent;
+              material.userData.baseDepthWrite = material.depthWrite;
               material.needsUpdate = true;
               renderMaterials.push({
                 material,
@@ -1518,6 +1550,7 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       clone.userData.baseScale = clone.scale.clone();
       clone.userData.baseRotation = clone.rotation.clone();
       clone.userData.renderMaterials = renderMaterials;
+      clone.userData.flavorMeshes = flavorMeshes;
       clone.userData.lineupChildren = [];
       clone.traverse((child) => {
         if (child.userData.lineupOffset) clone.userData.lineupChildren.push(child);
@@ -1619,22 +1652,36 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
     const applyVariantOpacity = (variant, variantOpacity, targetState) => {
       const renderMaterials = variant.userData.renderMaterials || [];
       const flavorProgress = Number.isFinite(targetState.flavorProgress) ? targetState.flavorProgress : null;
+      const visibleFlavorIndices = targetState.visibleFlavors?.length
+        ? new Set(targetState.visibleFlavors.map((flavor) => SCREEN2_FLAVOR_INDEX[flavor]).filter((index) => index !== undefined))
+        : null;
       const lineupIsolation = targetState.asset === 'screen3Desk'
         ? smoothstep(0.56, 0.74, targetState.clipProgress ?? 0)
         : 0;
+      const visibleFlavorKey = visibleFlavorIndices ? [...visibleFlavorIndices].sort().join(',') : 'all';
       const opacityKey = [
         Math.round(variantOpacity * 1000),
         flavorProgress === null ? 'x' : Math.round(flavorProgress * 1000),
         Math.round(lineupIsolation * 1000),
+        visibleFlavorKey,
       ].join(':');
       if (variant.userData.opacityKey === opacityKey) return;
 
       variant.userData.opacityKey = opacityKey;
+      const flavorMeshes = variant.userData.flavorMeshes || [];
+      flavorMeshes.forEach((mesh) => {
+        mesh.visible = !visibleFlavorIndices || visibleFlavorIndices.has(mesh.userData.flavorIndex);
+      });
+
       renderMaterials.forEach(({ material, flavorIndex, lineupRole }) => {
         let flavorOpacity = 1;
         if (flavorProgress !== null && flavorIndex !== undefined) {
           const rawFlavorOpacity = clamp(1 - Math.abs(flavorIndex - flavorProgress), 0, 1);
           flavorOpacity = smoothstep(0, 1, rawFlavorOpacity);
+        }
+
+        if (visibleFlavorIndices && flavorIndex !== undefined && !visibleFlavorIndices.has(flavorIndex)) {
+          flavorOpacity = 0;
         }
 
         const lineupOpacity = lineupRole === 'lineup-side' || lineupRole === 'lineup-platform'
@@ -1645,6 +1692,11 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         const shouldBeTransparent = material.userData.baseTransparent || nextOpacity < 0.999;
         if (material.transparent !== shouldBeTransparent) {
           material.transparent = shouldBeTransparent;
+          material.needsUpdate = true;
+        }
+        const nextDepthWrite = nextOpacity > 0.001 ? material.userData.baseDepthWrite : false;
+        if (material.depthWrite !== nextDepthWrite) {
+          material.depthWrite = nextDepthWrite;
           material.needsUpdate = true;
         }
         material.opacity = nextOpacity;
@@ -1780,10 +1832,72 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         window.requestAnimationFrame(() => {
           if (!disposed) {
             onCriticalAssetsReadyRef.current?.();
+            loadLastScreenAssetVariant();
             scheduleDeferredAssetLoads();
           }
         });
       });
+    };
+
+    let lastScreenAssetLoadStarted = false;
+    function loadLastScreenAssetVariant() {
+      if (disposed || lastScreenAssetLoadStarted || assetVariants.lastScreen) return;
+      lastScreenAssetLoadStarted = true;
+
+      loader.load(
+        '/blender-files/screens/last-screen.glb',
+        (gltf) => {
+          if (disposed) return;
+          const clone = gltf.scene.clone(true);
+          const lastScreenVariant = prepareClone(clone, 3.6, { normalizeAfterScale: true });
+          assetVariants.lastScreen = wrapVariantWithStablePivot(lastScreenVariant);
+          lockLocalPositions(assetVariants.lastScreen);
+          bindClipsToScroll(assetVariants.lastScreen, gltf.animations, {
+            excludePositionTracks: true,
+          });
+          scheduleWarmVariant(assetVariants.lastScreen, 80);
+        },
+        undefined,
+        () => {
+          assetVariants.lastScreen = undefined;
+        }
+      );
+    }
+
+    const lastScreenPreloadHandle = {
+      type: 'timeout',
+      id: window.setTimeout(loadLastScreenAssetVariant, 650),
+    };
+    warmupHandles.add(lastScreenPreloadHandle);
+
+    let screen4AssetLoadStarted = false;
+    const loadScreen4AssetVariants = () => {
+      if (disposed || screen4AssetLoadStarted || assetVariants.screen4Fruit || assetVariants.screen4Electrolytes) return;
+      screen4AssetLoadStarted = true;
+
+      loader.load(
+        '/blender-files/screens/4screen-divided-by-two.glb',
+        (gltf) => {
+          if (disposed) return;
+          const fruitClone = gltf.scene.clone(true);
+          const electrolytesClone = gltf.scene.clone(true);
+          const fruitVariant = prepareClone(fruitClone, 3.6, { normalizeAfterScale: true });
+          const electrolytesVariant = prepareClone(electrolytesClone, 3.6, { normalizeAfterScale: true });
+          applyStaticClipPose(electrolytesVariant, gltf.animations, 1);
+          recenterVariantToVisibleBounds(electrolytesVariant);
+          assetVariants.screen4Fruit = wrapVariantWithStablePivot(fruitVariant);
+          assetVariants.screen4Electrolytes = wrapVariantWithStablePivot(electrolytesVariant);
+          bindClipsToScroll(assetVariants.screen4Fruit, gltf.animations);
+          scheduleWarmVariant(assetVariants.screen4Fruit, 620);
+          scheduleWarmVariant(assetVariants.screen4Electrolytes, 700);
+        },
+        undefined,
+        () => {
+          screen4AssetLoadStarted = false;
+          assetVariants.screen4Fruit = undefined;
+          assetVariants.screen4Electrolytes = undefined;
+        }
+      );
     };
 
     const loadDeferredAssetVariants = () => {
@@ -1823,46 +1937,7 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         }
       );
 
-      loader.load(
-        '/blender-files/screens/4screen-divided-by-two.glb',
-        (gltf) => {
-          if (disposed) return;
-          const fruitClone = gltf.scene.clone(true);
-          const electrolytesClone = gltf.scene.clone(true);
-          const fruitVariant = prepareClone(fruitClone, 3.6, { normalizeAfterScale: true });
-          const electrolytesVariant = prepareClone(electrolytesClone, 3.6, { normalizeAfterScale: true });
-          // Keep these screens static and wrap them so scale does not change their screen position.
-          applyStaticClipPose(electrolytesVariant, gltf.animations, 1);
-          recenterVariantToVisibleBounds(electrolytesVariant);
-          assetVariants.screen4Fruit = wrapVariantWithStablePivot(fruitVariant);
-          assetVariants.screen4Electrolytes = wrapVariantWithStablePivot(electrolytesVariant);
-          scheduleWarmVariant(assetVariants.screen4Fruit, 620);
-          scheduleWarmVariant(assetVariants.screen4Electrolytes, 700);
-        },
-        undefined,
-        () => {
-          assetVariants.screen4Fruit = undefined;
-          assetVariants.screen4Electrolytes = undefined;
-        }
-      );
-
-      loader.load(
-        '/blender-files/screens/last-screen.glb',
-        (gltf) => {
-          if (disposed) return;
-          const clone = gltf.scene.clone(true);
-          assetVariants.lastScreen = prepareClone(clone, 3.6, { normalizeAfterScale: true });
-          lockLocalPositions(assetVariants.lastScreen);
-          bindClipsToScroll(assetVariants.lastScreen, gltf.animations, {
-            excludePositionTracks: true,
-          });
-          scheduleWarmVariant(assetVariants.lastScreen, 780);
-        },
-        undefined,
-        () => {
-          assetVariants.lastScreen = undefined;
-        }
-      );
+      loadScreen4AssetVariants();
     };
 
     function scheduleDeferredAssetLoads() {
@@ -1947,6 +2022,7 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         const animatedClone = gltf.scene.clone(true);
         assetVariants.screen2AnimatedStack = prepareClone(animatedClone, 3.35, {
           materialProfile: SCREEN2_TILTED_MATERIALS,
+          flavorDriven: true,
         });
         bindClipsToScroll(assetVariants.screen2AnimatedStack, gltf.animations);
 
@@ -2013,7 +2089,8 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       const basePosition = variant.userData.basePosition || new THREE.Vector3();
       const baseScale = variant.userData.baseScale || new THREE.Vector3(1, 1, 1);
       const baseRotation = variant.userData.baseRotation || new THREE.Euler();
-      const liveScale = state.scale * viewportScale * (1 + Math.sin(elapsed * 1.5) * 0.012);
+      const lockViewportPosition = state.lockViewportPosition || state.asset === 'lastScreen';
+      const liveScale = state.scale * viewportScale * (lockViewportPosition ? 1 : 1 + Math.sin(elapsed * 1.5) * 0.012);
       const targetPosition = new THREE.Vector3(
         basePosition.x + state.x,
         basePosition.y + state.y,
@@ -2028,7 +2105,12 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       const targetRotationY = baseRotation.y + (state.rotate ?? 0) + elapsed * (state.spin ?? 0.26);
       const targetRotationZ = baseRotation.z + (state.tilt ?? 0) + Math.sin(elapsed * 0.6) * (state.floatTilt ?? 0.055);
 
-      if (immediate || !variant.userData.renderInitialized) {
+      if (lockViewportPosition) {
+        variant.position.copy(targetPosition);
+        variant.scale.copy(targetScale);
+        variant.rotation.set(targetRotationX, targetRotationY, targetRotationZ);
+        variant.userData.renderInitialized = true;
+      } else if (immediate || !variant.userData.renderInitialized) {
         variant.position.copy(targetPosition);
         variant.scale.copy(targetScale);
         variant.rotation.set(targetRotationX, targetRotationY, targetRotationZ);
@@ -2041,7 +2123,15 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         variant.rotation.z = lerp(variant.rotation.z, targetRotationZ, 0.07);
       }
 
-      if (state.lockVisualCenter || state.asset === 'lastScreen') {
+      if ((state.lockVisualCenter || state.asset === 'lastScreen') && lockViewportPosition) {
+        variant.updateMatrixWorld(true);
+        visualLockBox.setFromObject(variant);
+        visualLockBox.getCenter(visualLockCenter);
+        variant.position.x += targetPosition.x - visualLockCenter.x;
+        variant.position.y += targetPosition.y - visualLockCenter.y;
+        variant.position.z += targetPosition.z - visualLockCenter.z;
+        variant.updateMatrixWorld(true);
+      } else if (state.lockVisualCenter || state.asset === 'lastScreen') {
         variant.updateMatrixWorld(true);
         visualLockBox.setFromObject(variant);
         visualLockBox.getCenter(visualLockCenter);
@@ -2083,12 +2173,24 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
             rotate: lerp(from.rotate ?? target.rotate ?? 0, target.rotate ?? 0, entryProgress),
             tilt: lerp(from.tilt ?? target.tilt ?? 0, target.tilt ?? 0, entryProgress),
             pitch: lerp(from.pitch ?? target.pitch ?? 0, target.pitch ?? 0, entryProgress),
+            clipProgress: lerp(from.clipProgress ?? target.clipProgress ?? 0, target.clipProgress ?? 0, entryProgress),
             opacity: lerp(from.opacity ?? target.opacity, target.opacity, entryProgress),
           };
         }
       } else {
         entryMotionState.id = null;
         entryMotionState.justStarted = false;
+      }
+
+      if (
+        target.asset === 'screen4Fruit'
+        || target.asset === 'screen4Electrolytes'
+        || target.fromAsset === 'screen4Fruit'
+        || target.fromAsset === 'screen4Electrolytes'
+        || target.toAsset === 'screen4Fruit'
+        || target.toAsset === 'screen4Electrolytes'
+      ) {
+        loadScreen4AssetVariants();
       }
 
       const assetBlend = clamp(target.assetBlend ?? 1, 0, 1);
@@ -3069,29 +3171,71 @@ function PriceStackSection({ section }) {
 
 function NutritionSection({ section }) {
   const isFruit = section.variant === 'fruit';
+  const stackRef = useRef(null);
+  const stackItems = section.stackItems || [];
+  const progress = usePinnedStackProgress(stackRef, stackItems.length);
+  const animatedProgress = useSmoothedProgress(progress, 700, 'linear');
 
   return (
     <section
       className={`panel nutrition-panel nutrition-panel-${section.variant} ${SECTION_THEMES[section.theme].className}`}
       id={section.id}
+      ref={isFruit ? stackRef : undefined}
+      style={isFruit ? { '--nutrition-stack-height': `${stackItems.length * 100}vh` } : undefined}
     >
       {isFruit ? (
-        <div className="nutrition-stack-copy" aria-label="Real Fruit zero added sugar 40 Calories">
-          {section.stackItems.map((item, index) => {
-            const lines = Array.isArray(item.label) ? item.label : [item.label];
+        <>
+          {stackItems.map((item, index) => (
+            <span
+              aria-hidden="true"
+              className="nutrition-stack-snap"
+              id={index === 0 ? undefined : item.id}
+              key={`nutrition-snap-${item.id}`}
+              style={{ top: `${index * 100}vh` }}
+            />
+          ))}
+          <div className="nutrition-stack-stage">
+            <div className="nutrition-stack-copy nutrition-stack-copy-animated" aria-label={stackItems.map((item) => Array.isArray(item.label) ? item.label.join(' ') : item.label).join(' ')}>
+              {stackItems.map((item, index) => {
+                const lines = Array.isArray(item.label) ? item.label : [item.label];
+                const distance = index - animatedProgress;
+                const absDistance = Math.abs(distance);
+                const activeAmount = 1 - smoothstep(0.12, 0.72, absDistance);
+                const mutedOpacity = clamp(0.42 - Math.max(absDistance - 1, 0) * 0.12, 0.22, 0.42);
+                const opacity = lerp(mutedOpacity, 1, activeAmount);
+                const blur = lerp(Math.min(absDistance * 6, 8), 0, activeAmount);
+                const translateY = distance * 62;
+                const fontSize = lerp(52, 76, activeAmount);
+                const lineHeight = lerp(1.05, 0.99, activeAmount);
+                const letterSpacing = lerp(0.42, 0.76, activeAmount);
+                const textShadowAlpha = lerp(0, 0.22, activeAmount);
 
-            return (
-              <div
-                className={`nutrition-stack-word ${item.active ? 'nutrition-stack-word-active' : ''} nutrition-stack-word-${index}`}
-                key={item.id}
-              >
-                {lines.map((line) => (
-                  <span key={`${item.id}-${line}`}>{line}</span>
-                ))}
-              </div>
-            );
-          })}
-        </div>
+                return (
+                  <div
+                    aria-hidden={opacity < 0.12 ? true : undefined}
+                    className={`nutrition-stack-word nutrition-stack-word-${index}`}
+                    key={item.id}
+                    style={{
+                      opacity,
+                      filter: `blur(${blur}px)`,
+                      transform: `translate3d(0, ${translateY}px, 0)`,
+                      fontSize: `${fontSize}px`,
+                      lineHeight,
+                      letterSpacing: `${letterSpacing}px`,
+                      textShadow: `0 1.366px 35.516px rgba(4, 14, 36, ${textShadowAlpha})`,
+                      zIndex: Math.round(activeAmount * 10),
+                    }}
+                  >
+                    {lines.map((line) => (
+                      <span key={`${item.id}-${line}`}>{line}</span>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+            <ScrollDown />
+          </div>
+        </>
       ) : (
         <h2 className="nutrition-electrolytes-title">
           {section.headlineLines.map((line) => (
@@ -3099,7 +3243,7 @@ function NutritionSection({ section }) {
           ))}
         </h2>
       )}
-      <ScrollDown />
+      {!isFruit && <ScrollDown />}
     </section>
   );
 }

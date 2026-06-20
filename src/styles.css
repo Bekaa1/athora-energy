@@ -2167,19 +2167,49 @@ body.is-step-scroll-transitioning .fixed-scroll-down {
   background: transparent;
 }
 
+.nutrition-panel-fruit {
+  height: var(--nutrition-stack-height, 300vh);
+  min-height: var(--nutrition-stack-height, 300vh);
+  overflow: visible;
+}
+
 .nutrition-panel::before,
 .nutrition-panel::after {
   display: none;
 }
 
+.nutrition-stack-snap {
+  position: absolute;
+  display: block;
+  left: 0;
+  z-index: -1;
+  width: 1px;
+  height: 100vh;
+  pointer-events: none;
+  scroll-snap-align: start;
+}
+
+.nutrition-stack-stage {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
 .nutrition-stack-copy {
   position: absolute;
-  left: 45.625vw;
+  left: 46.55vw;
   top: 31.625vh;
   z-index: 5;
   width: 678px;
   height: 294px;
   pointer-events: none;
+}
+
+.nutrition-stack-copy-animated {
+  z-index: 5;
 }
 
 .nutrition-stack-word {
@@ -2201,6 +2231,18 @@ body.is-step-scroll-transitioning .fixed-scroll-down {
   filter: blur(7px);
   opacity: 0.34;
   text-shadow: none;
+}
+
+.nutrition-stack-copy-animated .nutrition-stack-word {
+  top: 160px;
+  color: #fff;
+  font-size: 76px;
+  line-height: 0.99;
+  letter-spacing: 0.76px;
+  opacity: 0;
+  filter: blur(8px);
+  text-shadow: 0 1.366px 35.516px rgba(4, 14, 36, 0.22);
+  will-change: transform, opacity, filter;
 }
 
 .nutrition-stack-word-0 {
@@ -2504,12 +2546,13 @@ body.is-step-scroll-transitioning .fixed-scroll-down {
 .figma-access-panel .access-copy {
   position: absolute;
   left: clamp(170px, 16.8vw, 242px);
-  top: clamp(122px, 21.64vh, 238px);
+  top: clamp(170px, 27vh, 290px);
+  --access-copy-offset-y: 54px;
   z-index: 4;
   display: grid;
   width: min(460px, calc(100% - 120px));
   margin: 0;
-  transform: none;
+  transform: translate3d(0, var(--access-copy-offset-y), 0);
   justify-items: start;
   text-align: left;
 }
@@ -3456,6 +3499,13 @@ body.is-step-scroll-transitioning .fixed-scroll-down {
     filter: blur(5px);
   }
 
+  .nutrition-stack-copy-animated .nutrition-stack-word {
+    top: 104px;
+    font-size: clamp(28px, 8vw, 35px);
+    line-height: 1.02;
+    letter-spacing: 0.34px;
+  }
+
   .nutrition-stack-word-active {
     top: 48px;
     font-size: clamp(28px, 8vw, 35px);
@@ -3645,9 +3695,10 @@ body.is-step-scroll-transitioning .fixed-scroll-down {
   .figma-access-panel .access-copy {
     left: 24px;
     top: calc(50svh - 118px);
+    --access-copy-offset-y: 28px;
     width: calc(100% - 36px);
     margin: 0;
-    transform: none;
+    transform: translate3d(0, var(--access-copy-offset-y), 0);
     justify-items: start;
     text-align: left;
   }
