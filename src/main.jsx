@@ -3115,7 +3115,7 @@ function AccessSection({ section }) {
         alt=""
         aria-hidden="true"
       />
-      <footer className="footer-links">
+      <footer className="footer-links access-footer-links">
         {LEGAL_LINKS.map((link, index) => (
           <React.Fragment key={link.path}>
             {index > 0 ? <span>&bull;</span> : null}

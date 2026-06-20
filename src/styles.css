@@ -2638,12 +2638,12 @@ body.is-step-scroll-transitioning .fixed-scroll-down {
   position: absolute;
   left: 50%;
   top: auto;
-  bottom: clamp(86px, 12.77vh, 141px);
+  bottom: var(--access-wordmark-bottom, clamp(86px, 12.77vh, 141px));
   z-index: 3;
   display: block;
   width: min(91.88vw, 1323px);
   max-width: 1323px;
-  height: clamp(88px, 15.46vh, 170px);
+  height: var(--access-wordmark-height, clamp(88px, 15.46vh, 170px));
   object-fit: fill;
   opacity: 1;
   mix-blend-mode: normal;
@@ -2652,11 +2652,11 @@ body.is-step-scroll-transitioning .fixed-scroll-down {
   pointer-events: none;
 }
 
-.figma-access-panel .footer-links {
+.figma-access-panel .access-footer-links {
   left: 60px;
   right: 60px;
-  top: calc(100vh - 52px);
-  bottom: auto;
+  top: auto;
+  bottom: 36px;
   z-index: 4;
   color: rgba(255, 255, 255, 0.9);
   font-family: var(--font-display);
@@ -3696,11 +3696,11 @@ body.is-step-scroll-transitioning .fixed-scroll-down {
     height: 0;
   }
 
-  .figma-access-panel .footer-links {
+  .figma-access-panel .access-footer-links {
     left: 18px;
     right: 18px;
-    top: calc(100svh - 53px);
-    bottom: auto;
+    top: auto;
+    bottom: 22px;
     justify-content: center;
     gap: 8px;
     font-size: 6px;
