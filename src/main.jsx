@@ -123,6 +123,15 @@ const SCREEN4_CLIP = {
   rollOut: 1,
 };
 
+const SCREEN4_ELECTROLYTES_EXIT = {
+  fadeStart: 0.94,
+  fadeEnd: 1,
+  durationMs: 4000,
+  scrollDelayMs: 900,
+  clipLead: 0.08,
+  clipSpeed: 1.85,
+};
+
 const SCREEN2_TILTED_MATERIALS = SCREEN2_DEFAULT_MATERIALS;
 
 const sections = [
@@ -243,7 +252,10 @@ const sections = [
     type: 'lineup',
     headline: 'ATHORA',
     theme: 'blue',
-    modelTransitionStart: 1,
+    modelTransitionStart: 0,
+    modelTransitionMode: 'clipOnly',
+    holdTransformDuringClipScroll: true,
+    clipScrollEnd: 1,
     modelState: {
       x: 0,
       y: -0.2,
@@ -271,26 +283,23 @@ const sections = [
     headlineLines: ['NO PILLS', 'NO POWDERS'],
     figmaClaim: 'open-can',
     theme: 'blue',
-    modelTransitionStart: 0.88,
-    modelClipScroll: {
-      clipStart: 0.05,
-      clipEnd: 0.84,
-      startAt: 0,
-      endAt: 0.78,
-    },
+    modelTransitionStart: 1,
     modelState: {
       x: 0,
-      y: -0.08,
+      y: -0.28,
       z: 0,
-      scale: 1.18,
+      scale: 1.72,
       rotate: 0,
       tilt: 0,
-      pitch: 1.14,
+      pitch: -0.25,
       scene: 3,
       opacity: 1,
       asset: 'screen3Desk',
       assetSwitchAt: 1.01,
-      clipProgress: 0.84,
+      clipProgress: 0,
+      lineupCanScale: 1.16,
+      lineupCanLift: 0.05,
+      preserveLineupParts: true,
       spin: 0,
       floatTilt: 0,
     },
@@ -718,6 +727,9 @@ function interpolateState(a, b, t) {
     clipIdleLoopStart: t < assetSwitchAt ? a.clipIdleLoopStart : b.clipIdleLoopStart,
     clipIdleLoopEnd: t < assetSwitchAt ? a.clipIdleLoopEnd : b.clipIdleLoopEnd,
     clipIdleLoopSpeed: t < assetSwitchAt ? a.clipIdleLoopSpeed : b.clipIdleLoopSpeed,
+    lineupCanScale: lerp(a.lineupCanScale ?? 1, b.lineupCanScale ?? 1, t),
+    lineupCanLift: lerp(a.lineupCanLift ?? 0, b.lineupCanLift ?? 0, t),
+    preserveLineupParts: t < assetSwitchAt ? a.preserveLineupParts : b.preserveLineupParts,
     lockAnimatedPositions: t < assetSwitchAt ? a.lockAnimatedPositions : b.lockAnimatedPositions,
     lockVisualCenter: t < assetSwitchAt ? a.lockVisualCenter : b.lockVisualCenter,
     visualCenterLockStrength: lerp(
@@ -874,7 +886,19 @@ function useScrollModelState() {
 
         let interpolatedModelState = interpolateState(current, next, easedModelProgress);
         if (currentSection.modelTransitionMode === 'clipOnly' && modelProgress > 0) {
-          const wrapperReleaseProgress = smoothstep(0.35, 0.98, modelProgress);
+          if (Number.isFinite(currentSection.clipScrollEnd)) {
+            interpolatedModelState = {
+              ...interpolatedModelState,
+              clipProgress: lerp(current.clipProgress ?? 0, currentSection.clipScrollEnd, easedModelProgress),
+            };
+          }
+          const wrapperReleaseProgress = currentSection.holdTransformDuringClipScroll
+            ? 0
+            : smoothstep(
+                currentSection.modelTransformReleaseStart ?? 0.35,
+                currentSection.modelTransformReleaseEnd ?? 0.98,
+                modelProgress
+              );
           interpolatedModelState = {
             ...interpolatedModelState,
             x: lerp(current.x, interpolatedModelState.x, wrapperReleaseProgress),
@@ -1231,11 +1255,14 @@ function useControlledStepScroll(enabled) {
 
     let settleFrame = 0;
     let maxLockTimer = 0;
+    let pendingScrollTimer = 0;
     let locked = false;
     let lockedTargetTop = null;
     let lastInputAt = 0;
     let touchStartY = 0;
     let touchStepConsumed = false;
+    let nativeLineupScrollFrame = 0;
+    let nativeLineupScrollTimer = 0;
 
     const isEditableTarget = (target) =>
       Boolean(target?.closest?.('input, textarea, select, [contenteditable="true"]'));
@@ -1271,6 +1298,32 @@ function useControlledStepScroll(enabled) {
       }
     };
 
+    const startElectrolytesExitTransition = (direction, targetTop) => {
+      window.__athoraElectrolytesExitTransition = null;
+      if (direction <= 0) return false;
+
+      const currentTop = Math.round(window.scrollY);
+      const electrolytesTop = getDocumentTopById('electrolytes');
+      const simplicityTop = getDocumentTopById('simplicity');
+      const isElectrolytesExit =
+        electrolytesTop !== null &&
+        simplicityTop !== null &&
+        currentTop >= electrolytesTop - 24 &&
+        currentTop < simplicityTop - 8 &&
+        Math.abs(targetTop - simplicityTop) <= 80;
+
+      if (isElectrolytesExit) {
+        window.__athoraElectrolytesExitTransition = {
+          active: true,
+          startedAt: performance.now(),
+          durationMs: SCREEN4_ELECTROLYTES_EXIT.durationMs,
+        };
+        return true;
+      }
+
+      return false;
+    };
+
     const getStepTargets = () => {
       const maxScroll = getMaxScroll();
       const rawTargets = Array.from(document.querySelectorAll(STEP_SCROLL_SELECTOR))
@@ -1303,26 +1356,83 @@ function useControlledStepScroll(enabled) {
       return null;
     };
 
+    const shouldUseNativeLineupScroll = (direction) => {
+      const lineup = document.getElementById('lineup');
+      const openCan = document.getElementById('open-can');
+      if (!lineup || !openCan) return false;
+
+      const currentTop = Math.round(window.scrollY);
+      const lineupTop = Math.round(window.scrollY + lineup.getBoundingClientRect().top);
+      const openCanTop = Math.round(window.scrollY + openCan.getBoundingClientRect().top);
+      const transitionStart = lineupTop - 8;
+      const transitionEnd = openCanTop - 8;
+
+      if (direction > 0) {
+        return currentTop >= transitionStart && currentTop < transitionEnd;
+      }
+
+      return currentTop > transitionStart && currentTop <= openCanTop + 8;
+    };
+
+    const isInsideLineupNativeScroll = () => {
+      const lineup = document.getElementById('lineup');
+      const openCan = document.getElementById('open-can');
+      if (!lineup || !openCan) return false;
+
+      const currentTop = Math.round(window.scrollY);
+      const lineupTop = Math.round(window.scrollY + lineup.getBoundingClientRect().top);
+      const openCanTop = Math.round(window.scrollY + openCan.getBoundingClientRect().top);
+
+      return currentTop > lineupTop + 2 && currentTop < openCanTop - 2;
+    };
+
+    const syncLineupNativeScrollClass = () => {
+      if (isInsideLineupNativeScroll()) {
+        document.documentElement.classList.add('is-lineup-native-scroll');
+      } else {
+        document.documentElement.classList.remove('is-lineup-native-scroll');
+      }
+    };
+
+    const keepLineupNativeScrollActive = () => {
+      const syncAfterNativeScroll = () => {
+        if (isInsideLineupNativeScroll()) {
+          document.documentElement.classList.add('is-lineup-native-scroll');
+        } else {
+          syncLineupNativeScrollClass();
+        }
+      };
+
+      window.cancelAnimationFrame(nativeLineupScrollFrame);
+      window.clearTimeout(nativeLineupScrollTimer);
+      document.documentElement.classList.add('is-lineup-native-scroll');
+      nativeLineupScrollFrame = window.requestAnimationFrame(syncAfterNativeScroll);
+      nativeLineupScrollTimer = window.setTimeout(syncAfterNativeScroll, 80);
+    };
+
     const unlock = () => {
       locked = false;
       lockedTargetTop = null;
       clearFruitExitTransition();
       window.cancelAnimationFrame(settleFrame);
       window.clearTimeout(maxLockTimer);
+      window.clearTimeout(pendingScrollTimer);
+      pendingScrollTimer = 0;
     };
 
-    const watchTargetSettlement = () => {
+    const watchTargetSettlement = (extraLockMs = 0) => {
       window.cancelAnimationFrame(settleFrame);
       window.clearTimeout(maxLockTimer);
 
       const startedAt = performance.now();
+      const maxLockMs = STEP_SCROLL_MAX_LOCK_MS + extraLockMs;
 
       const check = () => {
         if (!locked) return;
 
         const nearTarget = lockedTargetTop === null || Math.abs(window.scrollY - lockedTargetTop) <= 3;
         const inputIsIdle = performance.now() - lastInputAt >= STEP_SCROLL_SETTLE_MS;
-        const expired = performance.now() - startedAt >= STEP_SCROLL_MAX_LOCK_MS;
+        const expired = performance.now() - startedAt >= maxLockMs;
 
         if ((nearTarget && inputIsIdle) || expired) {
           unlock();
@@ -1332,7 +1442,7 @@ function useControlledStepScroll(enabled) {
         settleFrame = window.requestAnimationFrame(check);
       };
 
-      maxLockTimer = window.setTimeout(unlock, STEP_SCROLL_MAX_LOCK_MS + STEP_SCROLL_SETTLE_MS + 120);
+      maxLockTimer = window.setTimeout(unlock, maxLockMs + STEP_SCROLL_SETTLE_MS + 120);
       settleFrame = window.requestAnimationFrame(check);
     };
 
@@ -1346,6 +1456,7 @@ function useControlledStepScroll(enabled) {
 
       clearFruitExitTransition();
       setFruitEntryModeForTarget(direction, targetTop);
+      const shouldDelayForElectrolytesExit = startElectrolytesExitTransition(direction, targetTop);
       if (direction < 0) {
         const fruitTop = getDocumentTopById('fruit');
         const currentTop = Math.round(window.scrollY);
@@ -1361,8 +1472,20 @@ function useControlledStepScroll(enabled) {
       locked = true;
       lockedTargetTop = targetTop;
       const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      window.scrollTo({ top: targetTop, left: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
-      watchTargetSettlement();
+      const startPageScroll = () => {
+        window.scrollTo({ top: targetTop, left: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+      };
+      const scrollDelayMs = shouldDelayForElectrolytesExit && !prefersReducedMotion
+        ? SCREEN4_ELECTROLYTES_EXIT.scrollDelayMs
+        : 0;
+
+      if (scrollDelayMs > 0) {
+        pendingScrollTimer = window.setTimeout(startPageScroll, scrollDelayMs);
+      } else {
+        startPageScroll();
+      }
+
+      watchTargetSettlement(scrollDelayMs);
 
       return true;
     };
@@ -1372,6 +1495,11 @@ function useControlledStepScroll(enabled) {
 
       const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
       if (Math.abs(delta) < STEP_SCROLL_WHEEL_THRESHOLD) return;
+
+      if (shouldUseNativeLineupScroll(delta > 0 ? 1 : -1)) {
+        keepLineupNativeScrollActive();
+        return;
+      }
 
       if (locked) {
         lastInputAt = performance.now();
@@ -1396,6 +1524,11 @@ function useControlledStepScroll(enabled) {
       };
       const direction = directionByKey[event.code] ?? directionByKey[event.key];
       if (!direction) return;
+
+      if (shouldUseNativeLineupScroll(direction)) {
+        keepLineupNativeScrollActive();
+        return;
+      }
 
       if (locked) {
         lastInputAt = performance.now();
@@ -1427,6 +1560,11 @@ function useControlledStepScroll(enabled) {
 
       if (touchStepConsumed || Math.abs(deltaY) < STEP_SCROLL_TOUCH_THRESHOLD) return;
 
+      if (shouldUseNativeLineupScroll(deltaY > 0 ? 1 : -1)) {
+        keepLineupNativeScrollActive();
+        return;
+      }
+
       touchStepConsumed = true;
       if (moveOneStep(deltaY > 0 ? 1 : -1)) {
         event.preventDefault();
@@ -1434,13 +1572,18 @@ function useControlledStepScroll(enabled) {
     };
 
     window.addEventListener('wheel', handleWheel, { passive: false });
+    window.addEventListener('scroll', syncLineupNativeScrollClass, { passive: true });
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('touchstart', handleTouchStart, { passive: true });
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
 
     return () => {
       unlock();
+      window.cancelAnimationFrame(nativeLineupScrollFrame);
+      window.clearTimeout(nativeLineupScrollTimer);
+      document.documentElement.classList.remove('is-lineup-native-scroll');
       window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('scroll', syncLineupNativeScrollClass);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
@@ -1618,12 +1761,41 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
     const prepareClone = (clone, targetHeight = 3.35, options = {}) => {
       const renderMaterials = [];
       const flavorMeshes = [];
+      const getInheritedLineupRole = (object) => {
+        let current = object;
+        while (current) {
+          if (current.userData?.lineupRole) return current.userData.lineupRole;
+          current = current.parent;
+        }
+        return undefined;
+      };
+      const getLineupRole = (object, materials = []) => {
+        const objectName = object.name || '';
+        const materialNames = materials.map((material) => material?.name || '').join(' ');
+        if (/^Cylinder013(?:_|$)|^Cylinder006$/i.test(objectName) || /(?:^|\s)(Glow|Base\.001)(?:\s|$)/i.test(materialNames)) {
+          return 'lineup-platform';
+        }
+        if (/^Cylinder014(?:_|$)|aluminium_can_250_ml005|250 ml\.005/i.test(objectName) || /Blue\.stable|COCONUT BLUEBERRY/i.test(materialNames)) {
+          return 'lineup-focus';
+        }
+        if (/^Cylinder015(?:_|$)|^Cylinder016(?:_|$)|aluminium_can_250_ml006|aluminium_can_250_ml007|250 ml\.006|250 ml\.007/i.test(objectName) || /(?:^|\s)(Green|Orange)(?:\s|$)|LEMON LIME|MANGO VANILLA/i.test(materialNames)) {
+          return 'lineup-side';
+        }
+
+        const inheritedRole = getInheritedLineupRole(object);
+        if (inheritedRole) return inheritedRole;
+
+        return undefined;
+      };
+
       clone.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
           child.receiveShadow = true;
           if (child.material) {
             const materials = Array.isArray(child.material) ? child.material : [child.material];
+            const lineupRole = getLineupRole(child, materials);
+            if (lineupRole) child.userData.lineupRole = lineupRole;
             child.material = Array.isArray(child.material)
               ? materials.map((material) => material.clone())
               : child.material.clone();
@@ -1642,9 +1814,10 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
               material.userData.baseDepthWrite = material.depthWrite;
               material.needsUpdate = true;
               renderMaterials.push({
+                mesh: child,
                 material,
                 flavorIndex: child.userData.flavorIndex,
-                lineupRole: child.userData.lineupRole,
+                lineupRole,
               });
             });
           }
@@ -1764,14 +1937,21 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       const visibleFlavorIndices = targetState.visibleFlavors?.length
         ? new Set(targetState.visibleFlavors.map((flavor) => SCREEN2_FLAVOR_INDEX[flavor]).filter((index) => index !== undefined))
         : null;
-      const lineupIsolation = targetState.asset === 'screen3Desk'
-        ? smoothstep(0.56, 0.74, targetState.clipProgress ?? 0)
+      const lineupClipProgress = targetState.clipProgress ?? 0;
+      const lineupSideIsolation = targetState.asset === 'screen3Desk'
+        && !targetState.preserveLineupParts
+        ? smoothstep(0.92, 0.995, lineupClipProgress)
+        : 0;
+      const lineupPlatformIsolation = targetState.asset === 'screen3Desk'
+        && !targetState.preserveLineupParts
+        ? smoothstep(0.56, 0.78, lineupClipProgress)
         : 0;
       const visibleFlavorKey = visibleFlavorIndices ? [...visibleFlavorIndices].sort().join(',') : 'all';
       const opacityKey = [
         Math.round(variantOpacity * 1000),
         flavorProgress === null ? 'x' : Math.round(flavorProgress * 1000),
-        Math.round(lineupIsolation * 1000),
+        Math.round(lineupSideIsolation * 1000),
+        Math.round(lineupPlatformIsolation * 1000),
         visibleFlavorKey,
       ].join(':');
       if (variant.userData.opacityKey === opacityKey) return;
@@ -1782,7 +1962,7 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         mesh.visible = !visibleFlavorIndices || visibleFlavorIndices.has(mesh.userData.flavorIndex);
       });
 
-      renderMaterials.forEach(({ material, flavorIndex, lineupRole }) => {
+      renderMaterials.forEach(({ mesh, material, flavorIndex, lineupRole }) => {
         let flavorOpacity = 1;
         if (flavorProgress !== null && flavorIndex !== undefined) {
           const rawFlavorOpacity = clamp(1 - Math.abs(flavorIndex - flavorProgress), 0, 1);
@@ -1793,9 +1973,12 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
           flavorOpacity = 0;
         }
 
-        const lineupOpacity = lineupRole === 'lineup-side' || lineupRole === 'lineup-platform'
-          ? 1 - lineupIsolation
-          : 1;
+        const lineupIsolation = lineupRole === 'lineup-side'
+          ? lineupSideIsolation
+          : lineupRole === 'lineup-platform'
+            ? lineupPlatformIsolation
+            : 0;
+        const lineupOpacity = 1 - lineupIsolation;
 
         const nextOpacity = material.userData.baseOpacity * variantOpacity * flavorOpacity * lineupOpacity;
         const shouldBeTransparent = material.userData.baseTransparent || nextOpacity < 0.999;
@@ -1809,6 +1992,11 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
           material.needsUpdate = true;
         }
         material.opacity = nextOpacity;
+
+        if (mesh && (lineupRole === 'lineup-side' || lineupRole === 'lineup-platform')) {
+          const shouldShowLineupMesh = lineupIsolation < 0.999;
+          if (mesh.visible !== shouldShowLineupMesh) mesh.visible = shouldShowLineupMesh;
+        }
       });
     };
 
@@ -1859,16 +2047,27 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       lineupChildren.forEach((child) => {
         const offset = child.userData.lineupOffset;
         if (offset) {
+          const canScale = targetState.lineupCanScale ?? 1;
+          const canLift = targetState.lineupCanLift ?? 0;
           if (child.userData.lineupBasePositionKey !== poseKey) {
             child.userData.lineupBasePosition = child.position.clone();
+            child.userData.lineupBaseScale = child.scale.clone();
             child.userData.lineupBasePositionKey = poseKey;
           }
           const basePosition = child.userData.lineupBasePosition;
+          const baseScale = child.userData.lineupBaseScale;
           child.position.set(
             basePosition.x + offset.x,
-            basePosition.y + offset.y,
+            basePosition.y + offset.y + canLift,
             basePosition.z + offset.z
           );
+          if (baseScale) {
+            child.scale.set(
+              baseScale.x * canScale,
+              baseScale.y * canScale,
+              baseScale.z * canScale
+            );
+          }
         }
       });
 
@@ -2023,11 +2222,11 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
             { match: /aluminium_can_250_ml007|250 ml\.007/i, x: 0.005, y: 0, z: 0.03 },
           ];
           clone.traverse((child) => {
-            if (/Cylinder\.006|Cylinder\.013/i.test(child.name)) {
+            if (/^Cylinder013(?:_|$)|^Cylinder006$|Cylinder\.006|Cylinder\.013/i.test(child.name)) {
               child.userData.lineupRole = 'lineup-platform';
-            } else if (/aluminium can 250 ml\.005|250 ml\.005/i.test(child.name)) {
+            } else if (/^Cylinder014(?:_|$)|aluminium_can_250_ml005|aluminium can 250 ml\.005|250 ml\.005/i.test(child.name)) {
               child.userData.lineupRole = 'lineup-focus';
-            } else if (/aluminium can 250 ml\.006|aluminium can 250 ml\.007|250 ml\.006|250 ml\.007/i.test(child.name)) {
+            } else if (/^Cylinder015(?:_|$)|^Cylinder016(?:_|$)|aluminium_can_250_ml006|aluminium_can_250_ml007|aluminium can 250 ml\.006|aluminium can 250 ml\.007|250 ml\.006|250 ml\.007/i.test(child.name)) {
               child.userData.lineupRole = 'lineup-side';
             }
 
@@ -2259,6 +2458,44 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       const delta = Math.min(clock.getDelta(), 0.033);
       const elapsed = clock.elapsedTime;
       let target = modelStateRef.current;
+
+      const electrolytesExitTransition = window.__athoraElectrolytesExitTransition;
+      if (electrolytesExitTransition?.active) {
+        const durationMs = Math.max(
+          electrolytesExitTransition.durationMs ?? SCREEN4_ELECTROLYTES_EXIT.durationMs,
+          1
+        );
+        const transitionProgress = clamp((performance.now() - electrolytesExitTransition.startedAt) / durationMs, 0, 1);
+        const electrolytesState = sections.find((section) => section.id === 'electrolytes')?.modelState;
+
+        if (electrolytesState && transitionProgress < 1) {
+          const clipProgressAmount = smoothstep(
+            0,
+            1,
+            clamp(
+              transitionProgress * SCREEN4_ELECTROLYTES_EXIT.clipSpeed + SCREEN4_ELECTROLYTES_EXIT.clipLead,
+              0,
+              1
+            )
+          );
+          const exitFade = smoothstep(
+            SCREEN4_ELECTROLYTES_EXIT.fadeStart,
+            SCREEN4_ELECTROLYTES_EXIT.fadeEnd,
+            transitionProgress
+          );
+
+          target = {
+            ...electrolytesState,
+            entryMotion: undefined,
+            clipIdleLoop: false,
+            clipAutoplay: false,
+            clipProgress: lerp(SCREEN4_CLIP.electrolytes, SCREEN4_CLIP.rollOut, clipProgressAmount),
+            opacity: lerp(electrolytesState.opacity ?? 1, 0, exitFade),
+          };
+        } else {
+          window.__athoraElectrolytesExitTransition = null;
+        }
+      }
 
       const entryMotion = target.entryMotion;
       if (entryMotion) {
@@ -2936,7 +3173,7 @@ function SystemsSection({ section }) {
 
 function ClaimSection({ section }) {
   const isFigmaClaim = Boolean(section.figmaClaim);
-  const hasStickyMotion = Boolean(section.modelClipScroll);
+  const hasStickyMotion = Boolean(section.modelClipScroll) || section.figmaClaim === 'open-can';
   const desktopLines = section.headlineLines || [section.headline];
   const mobileLines = section.mobileHeadlineLines || desktopLines;
   const hasMobileLines = Boolean(section.mobileHeadlineLines);
@@ -3800,7 +4037,7 @@ function LandingApp() {
         />
       ) : null}
       <Navigation activeIndex={activeIndex} showNav={showNav} preloaderLocked={preloaderLocked} />
-      <FixedScrollDown visible={preloaderLocked && introRevealPhase === 'done' && activeSection?.id !== 'access'} />
+      <FixedScrollDown visible={preloaderLocked && introRevealPhase === 'done' && activeSection?.id !== 'open-can' && activeSection?.id !== 'access'} />
       <PreloaderTransitionOverlay phase={introRevealPhase} />
       <main>
         {sections.map((section, index) => (

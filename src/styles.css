@@ -41,6 +41,10 @@ html {
   overscroll-behavior: none;
 }
 
+html.is-lineup-native-scroll {
+  scroll-snap-type: none;
+}
+
 body {
   min-width: 320px;
   margin: 0;
@@ -1539,6 +1543,12 @@ main {
   background: transparent;
 }
 
+.figma-claim-open-can h2 {
+  z-index: 3;
+  opacity: 0.28;
+  text-shadow: none;
+}
+
 .figma-claim-open-can::before,
 .figma-claim-open-can::after {
   background: transparent;
@@ -1718,8 +1728,14 @@ body.is-step-scroll-transitioning .fixed-scroll-down {
 
 .figma-lineup-panel {
   display: block;
+  height: 180vh;
+  min-height: 180vh;
   padding: 0;
   background: transparent;
+}
+
+.figma-lineup-panel .lineup-brand-wordmark {
+  top: 52.4vh;
 }
 
 .figma-lineup-panel::before {
