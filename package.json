@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
+    "test:electrolytes-exit": "node --test scripts/electrolytes-exit-motion.test.mjs",
+    "test:systems-hydration": "node --test scripts/systems-hydration-background-cans.test.mjs",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {

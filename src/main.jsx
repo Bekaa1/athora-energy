@@ -167,6 +167,8 @@ const sections = [
           assetSwitchAt: 0.03,
           clipProgress: SCREEN2_CLIP.blue,
           visibleFlavors: ['blue'],
+          backgroundFlavors: ['orange', 'green'],
+          backgroundFlavorOpacity: 1,
         },
       },
       {
@@ -376,6 +378,19 @@ const sections = [
     variant: 'electrolytes',
     headlineLines: ['1,000+ MG', 'ELECTROLYTES'],
     modelTransitionStart: 1,
+    scrollScrub: {
+      targetSectionId: 'simplicity',
+      height: '260vh',
+    },
+    modelClipScroll: {
+      clipStart: SCREEN4_CLIP.electrolytes,
+      clipEnd: SCREEN4_CLIP.rollOut,
+      startAt: 0,
+      endAt: 0.58,
+      easing: 'linear',
+      opacityFadeStartAt: 0.5,
+      opacityFadeEndAt: 0.6,
+    },
     theme: 'blue',
     modelState: {
       x: -5.5,
@@ -616,6 +631,18 @@ function smoothstep(edge0, edge1, value) {
   return t * t * (3 - 2 * t);
 }
 
+function getModelClipScrollAmount(clipConfig, rawSectionProgress) {
+  const startAt = clipConfig.startAt ?? 0;
+  const endAt = clipConfig.endAt ?? 1;
+  const rawClipAmount = clamp(
+    (rawSectionProgress - startAt) / Math.max(endAt - startAt, 0.001),
+    0,
+    1
+  );
+
+  return clipConfig.easing === 'linear' ? rawClipAmount : smoothstep(0, 1, rawClipAmount);
+}
+
 function lerp(start, end, t) {
   return start + (end - start) * t;
 }
@@ -726,6 +753,12 @@ function interpolateState(a, b, t) {
       t
     ),
     visibleFlavors: getInterpolatedVisibleFlavors(a, b, t, assetSwitchAt),
+    backgroundFlavors: t < assetSwitchAt ? a.backgroundFlavors : b.backgroundFlavors,
+    backgroundFlavorOpacity: lerp(
+      a.backgroundFlavorOpacity ?? 1,
+      b.backgroundFlavorOpacity ?? a.backgroundFlavorOpacity ?? 1,
+      t
+    ),
     flavorProgress: lerp(a.flavorProgress ?? 0, b.flavorProgress ?? a.flavorProgress ?? 0, t),
     asset: t < assetSwitchAt ? a.asset : b.asset,
     scene: t < 0.5 ? a.scene : b.scene,
@@ -947,15 +980,20 @@ function useScrollModelState() {
 
         if (currentSection.modelClipScroll && rawSectionProgress < modelTransitionStart) {
           const clipConfig = currentSection.modelClipScroll;
-          const clipAmount = smoothstep(
-            clipConfig.startAt ?? 0,
-            clipConfig.endAt ?? 1,
-            rawSectionProgress
-          );
+          const clipAmount = getModelClipScrollAmount(clipConfig, rawSectionProgress);
+          const clipOpacityAmount = clipConfig.opacityFadeStartAt == null
+            ? 0
+            : smoothstep(
+              clipConfig.opacityFadeStartAt,
+              clipConfig.opacityFadeEndAt ?? 1,
+              rawSectionProgress
+            );
+          const currentClipOpacity = interpolatedModelState.opacity ?? current.opacity ?? 1;
           interpolatedModelState = {
             ...interpolatedModelState,
             asset: current.asset,
             clipIdleLoop: false,
+            opacity: lerp(currentClipOpacity, clipConfig.opacityEnd ?? 0, clipOpacityAmount),
             clipProgress: lerp(clipConfig.clipStart ?? 0, clipConfig.clipEnd ?? 1, clipAmount),
           };
         }
@@ -1229,6 +1267,7 @@ function useControlledStepScroll(enabled) {
   useEffect(() => {
     if (!enabled) return undefined;
 
+    const scrollScrubSections = sections.filter((section) => section.scrollScrub);
     let settleFrame = 0;
     let maxLockTimer = 0;
     let locked = false;
@@ -1249,6 +1288,22 @@ function useControlledStepScroll(enabled) {
       const element = document.getElementById(id);
       return element ? Math.round(window.scrollY + element.getBoundingClientRect().top) : null;
     };
+
+    function isNativeScrollScrubRange(direction) {
+      const currentTop = Math.round(window.scrollY);
+
+      return scrollScrubSections.some((section) => {
+        const scrubTop = getDocumentTopById(section.id);
+        const targetTop = getDocumentTopById(section.scrollScrub.targetSectionId);
+        if (scrubTop === null || targetTop === null || targetTop <= scrubTop) return false;
+
+        if (direction > 0) {
+          return currentTop >= scrubTop - 8 && currentTop < targetTop - 8;
+        }
+
+        return currentTop > scrubTop + 8 && currentTop <= targetTop + 8;
+      });
+    }
 
     const setFruitEntryModeForTarget = (direction, targetTop) => {
       const fruit = document.getElementById('fruit');
@@ -1372,6 +1427,7 @@ function useControlledStepScroll(enabled) {
 
       const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
       if (Math.abs(delta) < STEP_SCROLL_WHEEL_THRESHOLD) return;
+      const direction = delta > 0 ? 1 : -1;
 
       if (locked) {
         lastInputAt = performance.now();
@@ -1379,7 +1435,9 @@ function useControlledStepScroll(enabled) {
         return;
       }
 
-      if (moveOneStep(delta > 0 ? 1 : -1)) {
+      if (isNativeScrollScrubRange(direction)) return;
+
+      if (moveOneStep(direction)) {
         event.preventDefault();
       }
     };
@@ -1402,6 +1460,8 @@ function useControlledStepScroll(enabled) {
         event.preventDefault();
         return;
       }
+
+      if (isNativeScrollScrubRange(direction)) return;
 
       if (moveOneStep(direction)) {
         event.preventDefault();
@@ -1428,7 +1488,10 @@ function useControlledStepScroll(enabled) {
       if (touchStepConsumed || Math.abs(deltaY) < STEP_SCROLL_TOUCH_THRESHOLD) return;
 
       touchStepConsumed = true;
-      if (moveOneStep(deltaY > 0 ? 1 : -1)) {
+      const direction = deltaY > 0 ? 1 : -1;
+      if (isNativeScrollScrubRange(direction)) return;
+
+      if (moveOneStep(direction)) {
         event.preventDefault();
       }
     };
@@ -1444,6 +1507,50 @@ function useControlledStepScroll(enabled) {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [enabled]);
+}
+
+function useScrollScrubSnapMode(enabled) {
+  useEffect(() => {
+    const html = document.documentElement;
+    const scrollScrubSections = sections.filter((section) => section.scrollScrub);
+
+    if (!enabled || !scrollScrubSections.length) {
+      html.classList.remove('athora-scroll-scrub');
+      return undefined;
+    }
+
+    let frame = 0;
+
+    const getDocumentTopById = (id) => {
+      const element = document.getElementById(id);
+      return element ? Math.round(window.scrollY + element.getBoundingClientRect().top) : null;
+    };
+
+    const update = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const currentTop = Math.round(window.scrollY);
+        const isInScrubRange = scrollScrubSections.some((section) => {
+          const scrubTop = getDocumentTopById(section.id);
+          const targetTop = getDocumentTopById(section.scrollScrub.targetSectionId);
+          return scrubTop !== null && targetTop !== null && currentTop >= scrubTop - 8 && currentTop <= targetTop + 8;
+        });
+
+        html.classList.toggle('athora-scroll-scrub', isInScrubRange);
+      });
+    };
+
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      html.classList.remove('athora-scroll-scrub');
     };
   }, [enabled]);
 }
@@ -1764,32 +1871,43 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       const visibleFlavorIndices = targetState.visibleFlavors?.length
         ? new Set(targetState.visibleFlavors.map((flavor) => SCREEN2_FLAVOR_INDEX[flavor]).filter((index) => index !== undefined))
         : null;
+      const backgroundFlavorIndices = targetState.backgroundFlavors?.length
+        ? new Set(targetState.backgroundFlavors.map((flavor) => SCREEN2_FLAVOR_INDEX[flavor]).filter((index) => index !== undefined))
+        : null;
       const lineupIsolation = targetState.asset === 'screen3Desk'
         ? smoothstep(0.56, 0.74, targetState.clipProgress ?? 0)
         : 0;
       const visibleFlavorKey = visibleFlavorIndices ? [...visibleFlavorIndices].sort().join(',') : 'all';
+      const backgroundFlavorKey = backgroundFlavorIndices ? [...backgroundFlavorIndices].sort().join(',') : 'none';
       const opacityKey = [
         Math.round(variantOpacity * 1000),
         flavorProgress === null ? 'x' : Math.round(flavorProgress * 1000),
         Math.round(lineupIsolation * 1000),
         visibleFlavorKey,
+        backgroundFlavorKey,
+        Math.round((targetState.backgroundFlavorOpacity ?? 1) * 1000),
       ].join(':');
       if (variant.userData.opacityKey === opacityKey) return;
 
       variant.userData.opacityKey = opacityKey;
       const flavorMeshes = variant.userData.flavorMeshes || [];
       flavorMeshes.forEach((mesh) => {
-        mesh.visible = !visibleFlavorIndices || visibleFlavorIndices.has(mesh.userData.flavorIndex);
+        const flavorIndex = mesh.userData.flavorIndex;
+        const isBackgroundFlavor = backgroundFlavorIndices?.has(flavorIndex);
+        mesh.visible = !visibleFlavorIndices || visibleFlavorIndices.has(flavorIndex) || isBackgroundFlavor;
       });
 
       renderMaterials.forEach(({ material, flavorIndex, lineupRole }) => {
+        const isBackgroundFlavor = backgroundFlavorIndices?.has(flavorIndex);
         let flavorOpacity = 1;
         if (flavorProgress !== null && flavorIndex !== undefined) {
           const rawFlavorOpacity = clamp(1 - Math.abs(flavorIndex - flavorProgress), 0, 1);
           flavorOpacity = smoothstep(0, 1, rawFlavorOpacity);
         }
 
-        if (visibleFlavorIndices && flavorIndex !== undefined && !visibleFlavorIndices.has(flavorIndex)) {
+        if (isBackgroundFlavor && visibleFlavorIndices && !visibleFlavorIndices.has(flavorIndex)) {
+          flavorOpacity = targetState.backgroundFlavorOpacity ?? 1;
+        } else if (visibleFlavorIndices && flavorIndex !== undefined && !visibleFlavorIndices.has(flavorIndex)) {
           flavorOpacity = 0;
         }
 
@@ -3283,17 +3401,26 @@ function PriceStackSection({ section }) {
 
 function NutritionSection({ section }) {
   const isFruit = section.variant === 'fruit';
+  const isScrollScrub = Boolean(section.scrollScrub);
   const stackRef = useRef(null);
   const stackItems = section.stackItems || [];
   const progress = usePinnedStackProgress(stackRef, stackItems.length);
   const animatedProgress = useSmoothedProgress(progress, 700, 'linear');
+  const panelClassName = `panel nutrition-panel nutrition-panel-${section.variant} ${
+    isScrollScrub ? 'nutrition-panel-scroll-scrub' : ''
+  } ${SECTION_THEMES[section.theme].className}`;
+  const panelStyle = isFruit
+    ? { '--nutrition-stack-height': `${stackItems.length * 100}vh` }
+    : isScrollScrub
+      ? { '--nutrition-scroll-scrub-height': section.scrollScrub.height || '180vh' }
+      : undefined;
 
   return (
     <section
-      className={`panel nutrition-panel nutrition-panel-${section.variant} ${SECTION_THEMES[section.theme].className}`}
+      className={panelClassName}
       id={section.id}
       ref={isFruit ? stackRef : undefined}
-      style={isFruit ? { '--nutrition-stack-height': `${stackItems.length * 100}vh` } : undefined}
+      style={panelStyle}
     >
       {isFruit ? (
         <>
@@ -3349,13 +3476,15 @@ function NutritionSection({ section }) {
           </div>
         </>
       ) : (
-        <h2 className="nutrition-electrolytes-title">
-          {section.headlineLines.map((line) => (
-            <span key={line}>{line}</span>
-          ))}
-        </h2>
+        <div className={isScrollScrub ? 'nutrition-scroll-scrub-stage' : undefined}>
+          <h2 className="nutrition-electrolytes-title">
+            {section.headlineLines.map((line) => (
+              <span key={line}>{line}</span>
+            ))}
+          </h2>
+          <ScrollDown />
+        </div>
       )}
-      {!isFruit && <ScrollDown />}
     </section>
   );
 }
@@ -3679,6 +3808,7 @@ function LandingApp() {
 
   usePreloaderScrollLock(preloaderLocked);
   useControlledStepScroll(preloaderLocked && introRevealPhase === 'done');
+  useScrollScrubSnapMode(preloaderLocked && introRevealPhase === 'done');
 
   useLayoutEffect(() => {
     if (!preloaderLocked || introRevealPhase !== 'done') return undefined;

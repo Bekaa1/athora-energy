@@ -41,6 +41,10 @@ html {
   overscroll-behavior: none;
 }
 
+html.athora-scroll-scrub {
+  scroll-snap-type: none;
+}
+
 body {
   min-width: 320px;
   margin: 0;
@@ -2171,6 +2175,21 @@ body.is-step-scroll-transitioning .fixed-scroll-down {
   height: var(--nutrition-stack-height, 300vh);
   min-height: var(--nutrition-stack-height, 300vh);
   overflow: visible;
+}
+
+.nutrition-panel-scroll-scrub {
+  height: var(--nutrition-scroll-scrub-height, 180vh);
+  min-height: var(--nutrition-scroll-scrub-height, 180vh);
+  overflow: visible;
+}
+
+.nutrition-scroll-scrub-stage {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .nutrition-panel::before,
