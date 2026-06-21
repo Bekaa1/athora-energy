@@ -1,6 +1,10 @@
 node_modules/
 dist/
 .vercel/
+.playwright-mcp/
+
+devserver*.err
+devserver*.out
 
 *.log
 .DS_Store
