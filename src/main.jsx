@@ -854,6 +854,7 @@ function useScrollModelState() {
         const sectionProgress = currentSection.systemsSequence?.length
           ? clamp((scrollY - currentMetric.top) / Math.max(systemsProgressRange, 1), 0, 1)
           : rawSectionProgress;
+
         const current = currentSection.modelState;
         const modelTransitionStart = currentSection.modelTransitionStart ?? 0;
         const next = modelTransitionStart >= 1
@@ -873,18 +874,23 @@ function useScrollModelState() {
 
         let interpolatedModelState = interpolateState(current, next, easedModelProgress);
         if (currentSection.modelTransitionMode === 'clipOnly' && modelProgress > 0) {
+          const wrapperReleaseProgress = smoothstep(0.35, 0.98, modelProgress);
           interpolatedModelState = {
             ...interpolatedModelState,
-            x: current.x,
-            y: current.y,
-            z: current.z,
-            scale: current.scale,
-            rotate: current.rotate,
-            tilt: current.tilt,
-            pitch: current.pitch,
-            spin: current.spin,
-            floatTilt: current.floatTilt,
-            visualCenterLockStrength: current.visualCenterLockStrength,
+            x: lerp(current.x, interpolatedModelState.x, wrapperReleaseProgress),
+            y: lerp(current.y, interpolatedModelState.y, wrapperReleaseProgress),
+            z: lerp(current.z, interpolatedModelState.z, wrapperReleaseProgress),
+            scale: lerp(current.scale, interpolatedModelState.scale, wrapperReleaseProgress),
+            rotate: lerp(current.rotate, interpolatedModelState.rotate, wrapperReleaseProgress),
+            tilt: lerp(current.tilt, interpolatedModelState.tilt, wrapperReleaseProgress),
+            pitch: lerp(current.pitch, interpolatedModelState.pitch, wrapperReleaseProgress),
+            spin: lerp(current.spin, interpolatedModelState.spin, wrapperReleaseProgress),
+            floatTilt: lerp(current.floatTilt, interpolatedModelState.floatTilt, wrapperReleaseProgress),
+            visualCenterLockStrength: lerp(
+              current.visualCenterLockStrength ?? 0,
+              interpolatedModelState.visualCenterLockStrength ?? 0,
+              wrapperReleaseProgress
+            ),
           };
         }
         if (currentSection.systemsSequence?.length) {
@@ -951,6 +957,36 @@ function useScrollModelState() {
             asset: current.asset,
             clipIdleLoop: false,
             clipProgress: lerp(clipConfig.clipStart ?? 0, clipConfig.clipEnd ?? 1, clipAmount),
+          };
+        }
+
+        const fruitExitTransition = window.__athoraFruitExitTransition;
+        if (fruitExitTransition?.active) {
+          const fruitState = sections.find((section) => section.id === 'fruit')?.modelState;
+          const fruitExitDistance = Math.max(fruitExitTransition.fromTop - fruitExitTransition.toTop, 1);
+          const fruitExitProgress = clamp((fruitExitTransition.fromTop - scrollY) / fruitExitDistance, 0, 1);
+          const fruitExitClipProgress = smoothstep(0.15, 1, fruitExitProgress);
+          const fruitExitFade = smoothstep(0.88, 1, fruitExitProgress);
+
+          interpolatedModelState = {
+            ...fruitState,
+            entryMotion: undefined,
+            opacity: lerp(fruitState?.opacity ?? 1, 0, fruitExitFade),
+            clipProgress: lerp(
+              fruitState?.clipProgress ?? SCREEN4_CLIP.fruitSettled,
+              SCREEN4_CLIP.fruitStart,
+              fruitExitClipProgress
+            ),
+          };
+        }
+
+        if (currentSection.id === 'fruit' && window.__athoraFruitEntryMode === 'settled') {
+          interpolatedModelState = {
+            ...interpolatedModelState,
+            entryMotion: undefined,
+            clipProgress: modelProgress > 0
+              ? interpolatedModelState.clipProgress
+              : SCREEN4_CLIP.fruitSettled,
           };
         }
 
@@ -1205,6 +1241,35 @@ function useControlledStepScroll(enabled) {
       Boolean(target?.closest?.('input, textarea, select, [contenteditable="true"]'));
 
     const getMaxScroll = () => Math.max(document.documentElement.scrollHeight - window.innerHeight, 0);
+    const clearFruitExitTransition = () => {
+      window.__athoraFruitExitTransition = null;
+    };
+
+    const getDocumentTopById = (id) => {
+      const element = document.getElementById(id);
+      return element ? Math.round(window.scrollY + element.getBoundingClientRect().top) : null;
+    };
+
+    const setFruitEntryModeForTarget = (direction, targetTop) => {
+      const fruit = document.getElementById('fruit');
+      if (!fruit) return;
+
+      const fruitTop = Math.round(window.scrollY + fruit.getBoundingClientRect().top);
+      const fruitBottom = fruitTop + Math.max(fruit.offsetHeight, window.innerHeight);
+      const currentTop = Math.round(window.scrollY);
+      const targetIsFruit = targetTop >= fruitTop - 8 && targetTop < fruitBottom - 8;
+
+      if (!targetIsFruit) return;
+
+      if (direction < 0 && currentTop > fruitTop + 8) {
+        window.__athoraFruitEntryMode = 'settled';
+        return;
+      }
+
+      if (direction > 0 && currentTop < fruitTop - 8) {
+        window.__athoraFruitEntryMode = 'rollIn';
+      }
+    };
 
     const getStepTargets = () => {
       const maxScroll = getMaxScroll();
@@ -1241,6 +1306,7 @@ function useControlledStepScroll(enabled) {
     const unlock = () => {
       locked = false;
       lockedTargetTop = null;
+      clearFruitExitTransition();
       window.cancelAnimationFrame(settleFrame);
       window.clearTimeout(maxLockTimer);
     };
@@ -1277,6 +1343,20 @@ function useControlledStepScroll(enabled) {
 
       const targetTop = getNextTarget(direction);
       if (targetTop === null) return false;
+
+      clearFruitExitTransition();
+      setFruitEntryModeForTarget(direction, targetTop);
+      if (direction < 0) {
+        const fruitTop = getDocumentTopById('fruit');
+        const currentTop = Math.round(window.scrollY);
+        if (fruitTop !== null && Math.abs(currentTop - fruitTop) <= 24 && targetTop < fruitTop - 8) {
+          window.__athoraFruitExitTransition = {
+            active: true,
+            fromTop: fruitTop,
+            toTop: targetTop,
+          };
+        }
+      }
 
       locked = true;
       lockedTargetTop = targetTop;
