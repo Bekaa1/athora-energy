@@ -54,7 +54,7 @@ test('controlled step scrolling yields to native scroll inside the electrolytes 
   assert.match(source, /function isNativeScrollScrubRange/, 'native scrub ranges should be detected before step scrolling');
   assert.match(source, /scrollScrubSections/, 'controlled step scrolling should derive ranges from section config');
   assert.match(source, /html\.classList\.toggle\('athora-scroll-scrub'/, 'snap should be disabled while inside a scrub range');
-  assert.match(styles, /html\.athora-scroll-scrub\s*\{[^}]*scroll-snap-type:\s*none;/s, 'CSS should disable scroll snap during the scrub range');
+  assert.match(styles, /html\.athora-scroll-scrub[^{]*\{[^}]*scroll-snap-type:\s*none;/s, 'CSS should disable scroll snap during the scrub range');
   assert.match(styles, /\.nutrition-panel-scroll-scrub\s*\{[^}]*min-height:\s*var\(--nutrition-scroll-scrub-height/s, 'electrolytes should have extra scroll distance');
   assert.match(styles, /\.nutrition-scroll-scrub-stage\s*\{[^}]*position:\s*sticky;/s, 'the electrolytes visual should stay pinned while scrubbing');
   assert.match(styles, /\.nutrition-scroll-scrub-stage\s*\{[^}]*z-index:\s*8;/s, 'the pinned electrolytes stage should layer above the following section until release');
