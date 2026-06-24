@@ -8,3 +8,6 @@ dist/
 Thumbs.db
 
 public/blender-files/*.blend
+
+# Source PNG frame sequences — only the optimized -webp folders ship
+public/frames/hydration/

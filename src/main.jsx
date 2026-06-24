@@ -481,9 +481,9 @@ const CRITICAL_PRELOAD_IMAGE_SOURCES = [
   '/figma-hero/image-3.svg',
   '/figma-hero/berry-center.svg',
 ];
-const CRITICAL_PRELOAD_BINARY_SOURCES = [
-  '/blender-files/screens/1screen-another-variant.glb',
-];
+// 3D/GLB removed in the frames-version branch — the can is shown via pre-rendered
+// transparent frame sequences scrubbed by scroll, so no GLB is preloaded.
+const CRITICAL_PRELOAD_BINARY_SOURCES = [];
 
 THREE.Cache.enabled = true;
 
@@ -1172,6 +1172,13 @@ function useScrollModelState(appRef) {
             lockVisualCenter: true,
             lockViewportPosition: true,
           };
+        }
+
+        // On the hydration screen the can is shown via a pre-rendered transparent frame
+        // sequence (scrubbed by scroll) instead of the live 3D model — hide the 3D can
+        // here so they don't double up. The frame layer sits over the same CSS background.
+        if (currentSection.id === 'all-systems') {
+          interpolatedModelState = { ...interpolatedModelState, opacity: 0 };
         }
 
         modelStateRef.current = interpolatedModelState;
@@ -4045,6 +4052,98 @@ const SectionRenderer = React.memo(function SectionRenderer({ section, onIntroRe
   }
 });
 
+// Pre-rendered transparent frame sequences scrubbed by scroll (a cheap, smooth
+// alternative to live 3D for heavy screens). Frames are transparent WebP over the
+// existing CSS background; the 3D can for that section is hidden in useScrollModelState.
+const FRAME_SCRUB_CONFIG = {
+  'all-systems': { count: 152, path: '/frames/hydration-webp', scale: 1, offsetX: 0, offsetY: 0 },
+};
+
+function FlavorFrameScrub({ sectionId, active }) {
+  const config = FRAME_SCRUB_CONFIG[sectionId];
+  const canvasRef = useRef(null);
+  const framesRef = useRef([]);
+
+  useEffect(() => {
+    if (!config) return undefined;
+    const imgs = [];
+    for (let i = 1; i <= config.count; i += 1) {
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = `${config.path}/${String(i).padStart(4, '0')}.webp`;
+      imgs.push(img);
+    }
+    framesRef.current = imgs;
+    return () => { framesRef.current = []; };
+  }, [config]);
+
+  useEffect(() => {
+    if (!config) return undefined;
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    let raf = 0;
+    let lastIdx = -1;
+
+    const sizeCanvas = () => {
+      canvas.width = Math.round(window.innerWidth * dpr);
+      canvas.height = Math.round(window.innerHeight * dpr);
+    };
+
+    const draw = (force) => {
+      raf = 0;
+      const el = document.getElementById(sectionId);
+      if (!el) return;
+      const top = window.scrollY + el.getBoundingClientRect().top;
+      const range = Math.max(el.offsetHeight - window.innerHeight, 1);
+      const p = clamp((window.scrollY - top) / range, 0, 1);
+      const idx = clamp(Math.round(p * (config.count - 1)), 0, config.count - 1);
+      if (idx === lastIdx && !force) return;
+      lastIdx = idx;
+      const img = framesRef.current[idx];
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (img && img.complete && img.naturalWidth) {
+        const cw = canvas.width;
+        const ch = canvas.height;
+        const fw = img.naturalWidth;
+        const fh = img.naturalHeight;
+        const s = Math.max(cw / fw, ch / fh) * config.scale; // cover
+        const dw = fw * s;
+        const dh = fh * s;
+        ctx.drawImage(img, (cw - dw) / 2 + config.offsetX * dpr, (ch - dh) / 2 + config.offsetY * dpr, dw, dh);
+      }
+    };
+
+    sizeCanvas();
+    draw(true);
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(() => draw(false)); };
+    const onResize = () => { sizeCanvas(); draw(true); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    // Frames decode async; redraw the current frame a few times while they land.
+    const warm = window.setInterval(() => draw(true), 250);
+    const stopWarm = window.setTimeout(() => window.clearInterval(warm), 5000);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+      window.cancelAnimationFrame(raf);
+      window.clearInterval(warm);
+      window.clearTimeout(stopWarm);
+    };
+  }, [config, sectionId]);
+
+  if (!config) return null;
+  return (
+    <canvas
+      ref={canvasRef}
+      className={`frame-scrub ${active ? 'frame-scrub-active' : ''}`}
+      aria-hidden="true"
+    />
+  );
+}
+
 function LandingApp() {
   useStartAtPreloaderOnPageLoad();
 
@@ -4055,7 +4154,9 @@ function LandingApp() {
   const [introRevealPhase, setIntroRevealPhase] = useState('idle');
   const [introSceneHeld, setIntroSceneHeld] = useState(false);
   const [sceneBootAllowed, setSceneBootAllowed] = useState(false);
-  const [criticalSceneReady, setCriticalSceneReady] = useState(false);
+  // No 3D scene in the frames-version: nothing to wait for, so the preloader doesn't
+  // gate on scene assets.
+  const [criticalSceneReady, setCriticalSceneReady] = useState(true);
   const [criticalImagesReady, setCriticalImagesReady] = useState(false);
   const introRevealPhaseRef = useRef('idle');
   const introRevealTimersRef = useRef([]);
@@ -4213,14 +4314,8 @@ function LandingApp() {
         }
       />
       <FixedDetailMorphBackground visible={showDetailMorphBg} />
-      {sceneBootAllowed ? (
-        <AthoraScene
-          modelStateRef={modelStateRef}
-          scrollActivityRef={scrollActivityRef}
-          hidden={hideSceneDuringIntroReveal}
-          onCriticalAssetsReady={markCriticalSceneReady}
-        />
-      ) : null}
+      {/* 3D scene removed — cans are pre-rendered frame sequences scrubbed by scroll. */}
+      <FlavorFrameScrub sectionId="all-systems" active={activeSection?.id === 'all-systems'} />
       <Navigation activeIndex={activeIndex} showNav={showNav} preloaderLocked={preloaderLocked} />
       <FixedScrollDown visible={preloaderLocked && introRevealPhase === 'done' && activeSection?.id !== 'access'} />
       <PreloaderTransitionOverlay phase={introRevealPhase} />

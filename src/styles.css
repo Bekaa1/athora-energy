@@ -107,6 +107,22 @@ a {
   will-change: opacity;
 }
 
+/* Scroll-scrubbed frame sequence layer — sits on the same plane as the 3D scene,
+   over the CSS background, under the text/nav. Shown only on its section. */
+.frame-scrub {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 4;
+  pointer-events: none;
+  display: none;
+}
+
+.frame-scrub-active {
+  display: block;
+}
+
 .scene-hidden {
   opacity: 0;
   transition: none;

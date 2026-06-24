@@ -7,3 +7,7 @@ dist/
 Thumbs.db
 
 public/blender-files/*.blend
+.vercel
+
+# Source PNG frame sequences (keep optimized -webp only)
+public/frames/hydration/
