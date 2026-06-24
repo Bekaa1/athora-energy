@@ -4070,6 +4070,12 @@ const FRAME_SCRUB = {
   // the sequence (splitFrame -> count) plays across all-systems (carousel + exit).
   // Lower splitFrame = the can stays vertical for less scroll on intro.
   splitFrame: 120,
+  // The green-can exit (frames ~exitFrame..end) is held back to the very end of
+  // all-systems so it plays while you're on the IMMUNITY screen scrolling down — not on
+  // vitamins. Carousel (splitFrame..exitFrame) spans all-systems progress 0..exitProgress;
+  // the exit (exitFrame..count-1) spans exitProgress..1.
+  exitFrame: 245,
+  exitProgress: 0.9,
   scale: 1,
   offsetX: 0,
   offsetY: 0,
@@ -4121,13 +4127,22 @@ function FlavorFrameScrub({ active }) {
       const endY = toTop + toEl.offsetHeight - window.innerHeight;
       const last = config.count - 1;
       const split = clamp(config.splitFrame ?? Math.round(last / 2), 0, last);
+      const exitFrame = clamp(config.exitFrame ?? last, split, last);
+      const exitProgress = clamp(config.exitProgress ?? 1, 0.01, 1);
       let frame;
       if (window.scrollY < toTop) {
+        // intro screen: can stands up and tilts (frames 0..split)
         const p1 = clamp((window.scrollY - introTop) / Math.max(toTop - introTop, 1), 0, 1);
         frame = p1 * split;
       } else {
         const p2 = clamp((window.scrollY - toTop) / Math.max(endY - toTop, 1), 0, 1);
-        frame = split + p2 * (last - split);
+        if (p2 < exitProgress) {
+          // carousel across hydration/energy/vitamins/immunity (frames split..exitFrame)
+          frame = split + (p2 / exitProgress) * (exitFrame - split);
+        } else {
+          // green-can exit, only on the immunity screen scrolling down (frames exitFrame..end)
+          frame = exitFrame + ((p2 - exitProgress) / (1 - exitProgress)) * (last - exitFrame);
+        }
       }
       const idx = clamp(Math.round(frame), 0, last);
       if (idx === lastIdx && !force) return;
