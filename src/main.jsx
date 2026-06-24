@@ -4064,6 +4064,12 @@ const FRAME_SCRUB = {
   path: '/frames/hydration-webp',
   fromSection: 'intro',
   toSection: 'all-systems',
+  // Piecewise scrub: the intro screen plays frames 0 -> splitFrame (can stands up and
+  // tilts), so by the time you reach the hydration screen the can is already semi-
+  // horizontal (frame ~splitFrame) instead of still vertical over the text. The rest of
+  // the sequence (splitFrame -> count) plays across all-systems (carousel + exit).
+  // Lower splitFrame = the can stays vertical for less scroll on intro.
+  splitFrame: 120,
   scale: 1,
   offsetX: 0,
   offsetY: 0,
@@ -4108,12 +4114,21 @@ function FlavorFrameScrub({ active }) {
       const fromEl = document.getElementById(config.fromSection);
       const toEl = document.getElementById(config.toSection);
       if (!fromEl || !toEl) return;
-      // Map scroll from the start of fromSection to the last screen of toSection across
-      // the whole frame range, so the animation begins on the intro screen.
-      const startY = window.scrollY + fromEl.getBoundingClientRect().top;
-      const endY = window.scrollY + toEl.getBoundingClientRect().top + toEl.offsetHeight - window.innerHeight;
-      const p = clamp((window.scrollY - startY) / Math.max(endY - startY, 1), 0, 1);
-      const idx = clamp(Math.round(p * (config.count - 1)), 0, config.count - 1);
+      // Piecewise: intro plays 0..splitFrame, all-systems plays splitFrame..count-1.
+      const introTop = window.scrollY + fromEl.getBoundingClientRect().top;
+      const toTop = window.scrollY + toEl.getBoundingClientRect().top;
+      const endY = toTop + toEl.offsetHeight - window.innerHeight;
+      const last = config.count - 1;
+      const split = clamp(config.splitFrame ?? Math.round(last / 2), 0, last);
+      let frame;
+      if (window.scrollY < toTop) {
+        const p1 = clamp((window.scrollY - introTop) / Math.max(toTop - introTop, 1), 0, 1);
+        frame = p1 * split;
+      } else {
+        const p2 = clamp((window.scrollY - toTop) / Math.max(endY - toTop, 1), 0, 1);
+        frame = split + p2 * (last - split);
+      }
+      const idx = clamp(Math.round(frame), 0, last);
       if (idx === lastIdx && !force) return;
       const dir = idx >= lastIdx ? 1 : -1;
       lastIdx = idx;
