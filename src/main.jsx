@@ -4080,6 +4080,8 @@ function FlavorFrameScrub({ active }) {
       imgs.push(img);
     }
     framesRef.current = imgs;
+    // Pre-decode the opening frames so the very first scrub is hitch-free.
+    Promise.allSettled(imgs.slice(0, 32).map((im) => im.decode?.())).catch(() => {});
     return () => { framesRef.current = []; };
   }, [config]);
 
@@ -4087,7 +4089,9 @@ function FlavorFrameScrub({ active }) {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
     const ctx = canvas.getContext('2d');
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    // Draw at 1:1 with the source (1440-wide frames) — upscaling beyond the source only
+    // softens it, so cap the backing store near the source width rather than full DPR.
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
     let raf = 0;
     let lastIdx = -1;
 
@@ -4108,8 +4112,16 @@ function FlavorFrameScrub({ active }) {
       const p = clamp((window.scrollY - startY) / Math.max(endY - startY, 1), 0, 1);
       const idx = clamp(Math.round(p * (config.count - 1)), 0, config.count - 1);
       if (idx === lastIdx && !force) return;
+      const dir = idx >= lastIdx ? 1 : -1;
       lastIdx = idx;
       const img = framesRef.current[idx];
+      // Warm-decode the next frames in the scroll direction so upcoming frames are ready
+      // to draw instantly (no mid-scroll decode hitch).
+      for (let k = 1; k <= 10; k += 1) {
+        const j = idx + dir * k;
+        const ahead = framesRef.current[j];
+        if (ahead && ahead.complete && ahead.naturalWidth) ahead.decode?.().catch(() => {});
+      }
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (img && img.complete && img.naturalWidth) {
         const cw = canvas.width;
