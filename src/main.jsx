@@ -4052,20 +4052,26 @@ const SectionRenderer = React.memo(function SectionRenderer({ section, onIntroRe
   }
 });
 
-// Pre-rendered transparent frame sequences scrubbed by scroll (a cheap, smooth
-// alternative to live 3D for heavy screens). Frames are transparent WebP over the
-// existing CSS background; the 3D can for that section is hidden in useScrollModelState.
-const FRAME_SCRUB_CONFIG = {
-  'all-systems': { count: 152, path: '/frames/hydration-webp', scale: 1, offsetX: 0, offsetY: 0 },
+// Pre-rendered transparent frame sequence scrubbed by scroll (cheap + smooth, replaces
+// the live 3D can). Transparent WebP over the existing CSS background. The sequence spans
+// from `fromSection` (first frame = upright can on the intro screen) through `toSection`
+// (carousel + exit), so the can is present from the first screen after the preloader.
+const FRAME_SCRUB = {
+  count: 304,
+  path: '/frames/hydration-webp',
+  fromSection: 'intro',
+  toSection: 'all-systems',
+  scale: 1,
+  offsetX: 0,
+  offsetY: 0,
 };
 
-function FlavorFrameScrub({ sectionId, active }) {
-  const config = FRAME_SCRUB_CONFIG[sectionId];
+function FlavorFrameScrub({ active }) {
+  const config = FRAME_SCRUB;
   const canvasRef = useRef(null);
   const framesRef = useRef([]);
 
   useEffect(() => {
-    if (!config) return undefined;
     const imgs = [];
     for (let i = 1; i <= config.count; i += 1) {
       const img = new Image();
@@ -4078,7 +4084,6 @@ function FlavorFrameScrub({ sectionId, active }) {
   }, [config]);
 
   useEffect(() => {
-    if (!config) return undefined;
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
     const ctx = canvas.getContext('2d');
@@ -4093,11 +4098,14 @@ function FlavorFrameScrub({ sectionId, active }) {
 
     const draw = (force) => {
       raf = 0;
-      const el = document.getElementById(sectionId);
-      if (!el) return;
-      const top = window.scrollY + el.getBoundingClientRect().top;
-      const range = Math.max(el.offsetHeight - window.innerHeight, 1);
-      const p = clamp((window.scrollY - top) / range, 0, 1);
+      const fromEl = document.getElementById(config.fromSection);
+      const toEl = document.getElementById(config.toSection);
+      if (!fromEl || !toEl) return;
+      // Map scroll from the start of fromSection to the last screen of toSection across
+      // the whole frame range, so the animation begins on the intro screen.
+      const startY = window.scrollY + fromEl.getBoundingClientRect().top;
+      const endY = window.scrollY + toEl.getBoundingClientRect().top + toEl.offsetHeight - window.innerHeight;
+      const p = clamp((window.scrollY - startY) / Math.max(endY - startY, 1), 0, 1);
       const idx = clamp(Math.round(p * (config.count - 1)), 0, config.count - 1);
       if (idx === lastIdx && !force) return;
       lastIdx = idx;
@@ -4123,7 +4131,7 @@ function FlavorFrameScrub({ sectionId, active }) {
     window.addEventListener('resize', onResize);
     // Frames decode async; redraw the current frame a few times while they land.
     const warm = window.setInterval(() => draw(true), 250);
-    const stopWarm = window.setTimeout(() => window.clearInterval(warm), 5000);
+    const stopWarm = window.setTimeout(() => window.clearInterval(warm), 6000);
 
     return () => {
       window.removeEventListener('scroll', onScroll);
@@ -4132,9 +4140,8 @@ function FlavorFrameScrub({ sectionId, active }) {
       window.clearInterval(warm);
       window.clearTimeout(stopWarm);
     };
-  }, [config, sectionId]);
+  }, [config]);
 
-  if (!config) return null;
   return (
     <canvas
       ref={canvasRef}
@@ -4315,7 +4322,7 @@ function LandingApp() {
       />
       <FixedDetailMorphBackground visible={showDetailMorphBg} />
       {/* 3D scene removed — cans are pre-rendered frame sequences scrubbed by scroll. */}
-      <FlavorFrameScrub sectionId="all-systems" active={activeSection?.id === 'all-systems'} />
+      <FlavorFrameScrub active={activeSection?.id === 'intro' || activeSection?.id === 'all-systems'} />
       <Navigation activeIndex={activeIndex} showNav={showNav} preloaderLocked={preloaderLocked} />
       <FixedScrollDown visible={preloaderLocked && introRevealPhase === 'done' && activeSection?.id !== 'access'} />
       <PreloaderTransitionOverlay phase={introRevealPhase} />
