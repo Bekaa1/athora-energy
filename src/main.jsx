@@ -1458,13 +1458,17 @@ function useControlledStepScroll(enabled) {
       if (smoothTarget == null) { smoothRaf = 0; return; }
       const current = window.scrollY;
       const diff = smoothTarget - current;
-      if (Math.abs(diff) <= 0.5) {
+      const step = diff * 0.16;
+      // Snap-and-stop once we're within ~1px OR the eased step rounds below a pixel.
+      // Otherwise the integer scrollY never advances (0.16 * a few px < 1px) and the rAF
+      // loop spins forever, pinning the scroll and overriding every other scroll attempt.
+      if (Math.abs(diff) <= 1 || Math.abs(step) < 1) {
         window.scrollTo(0, Math.round(smoothTarget));
         smoothTarget = null;
         smoothRaf = 0;
         return;
       }
-      window.scrollTo(0, current + diff * 0.16);
+      window.scrollTo(0, current + step);
       smoothRaf = window.requestAnimationFrame(smoothScrollStep);
     };
     const smoothScrollBy = (delta) => {
@@ -1592,6 +1596,8 @@ function useControlledStepScroll(enabled) {
       const targetTop = getNextTarget(direction);
       if (targetTop === null) return false;
 
+      // Kill any in-flight scrub inertia so it can't fight (or override) this step jump.
+      stopSmoothScroll();
       clearFruitExitTransition();
       setFruitEntryModeForTarget(direction, targetTop);
       if (direction < 0) {
@@ -1698,9 +1704,18 @@ function useControlledStepScroll(enabled) {
     window.addEventListener('touchstart', handleTouchStart, { passive: true });
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
 
+    // While the JS step-scroll owns navigation, turn OFF CSS scroll-snap entirely.
+    // moveOneStep already lands the scroll on exact section/claim targets, so mandatory
+    // snap is redundant and actively fights the programmatic scroll at range boundaries
+    // (it re-engaged mid-flight and snapped back, trapping the user on five-products).
+    const html = document.documentElement;
+    const previousSnapType = html.style.scrollSnapType;
+    html.style.scrollSnapType = 'none';
+
     return () => {
       unlock();
       stopSmoothScroll();
+      html.style.scrollSnapType = previousSnapType;
       window.removeEventListener('wheel', handleWheel);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('touchstart', handleTouchStart);
