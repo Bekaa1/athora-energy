@@ -140,6 +140,9 @@ const sections = [
     headline: 'ATHORA',
     subcopy: 'Scroll down',
     theme: 'blue',
+    // Free (native) scroll from intro through all-systems so the frame-scrubbed can
+    // flows continuously with the scroll like the film, instead of snapping word-by-word.
+    scrollScrub: { targetSectionId: 'all-systems' },
     modelState: {
       x: 0,
       y: -0.12,
@@ -165,10 +168,9 @@ const sections = [
     theme: 'blue',
     figmaVariant: 'hydration',
     wordStepScroll: true,
-    // Scrub (native scroll, no snap) only the tail after the last word step so the
-    // green can's GLB exit plays under the user's own scroll speed — smooth and slow,
-    // without the snap-lock stutter a long snap caused.
-    scrollScrub: { targetSectionId: 'five-products', startOffsetSteps: 3 },
+    // Whole section is free (native) scroll so the frame-scrubbed can flows continuously
+    // with the scroll (no word-by-word snapping) — matches the film playback feel.
+    scrollScrub: { targetSectionId: 'five-products', startOffsetSteps: 0 },
     systemsSequence: [
       {
         theme: 'blue',
@@ -1642,8 +1644,9 @@ function useControlledStepScroll(enabled) {
       }
 
       if (isNativeScrollScrubRange(direction)) {
-        event.preventDefault();
-        smoothScrollBy(delta);
+        // Let the browser scroll natively here — the frame-scrub layer tracks
+        // window.scrollY, so the can flows continuously and smoothly with the scroll
+        // (no custom easing/hijack, no word-by-word snapping).
         return;
       }
 
