@@ -2583,6 +2583,13 @@ function AthoraScene({ modelStateRef, scrollActivityRef, hidden = false, onCriti
     const visualLockCenter = new THREE.Vector3();
     let raf = 0;
     let wasShowingModel = false;
+    // Render-on-demand bookkeeping: the scene is only redrawn while something is actually
+    // moving (scrolling, settling after a scroll, an entry/auto-play animation). When idle
+    // it stops drawing entirely — 0 GPU/CPU, no heat, no "everything lags" feeling.
+    let lastRenderTarget = null;
+    let dirtyUntil = 0;
+    const RENDER_SETTLE_MS = 900; // keep drawing this long after the last change so the
+    // position/clip easing finishes and the final idle frame is crisp.
     const entryMotionState = {
       id: null,
       startedAt: 0,
@@ -2598,7 +2605,10 @@ function AthoraScene({ modelStateRef, scrollActivityRef, hidden = false, onCriti
       const visualCenterLockStrength = state.asset === 'lastScreen'
         ? 1
         : clamp(state.visualCenterLockStrength ?? (state.lockVisualCenter ? 1 : 0), 0, 1);
-      const liveScale = state.scale * viewportScale * (lockViewportPosition ? 1 : 1 + Math.sin(elapsed * 1.5) * 0.012);
+      // No idle "breathing": the can holds a steady scale; it only changes when the
+      // scroll drives state.scale. (Removed the per-frame sine pulse that made the can
+      // drift on its own — the client's "банки прыгают просто так".)
+      const liveScale = state.scale * viewportScale;
       // Last-screen can travels with the page as you scroll within the access frame.
       // Computed live from window.scrollY (not React state) so there is no lag/snap.
       let scrollFollowY = 0;
@@ -2621,8 +2631,10 @@ function AthoraScene({ modelStateRef, scrollActivityRef, hidden = false, onCriti
         baseScale.z * liveScale
       );
       const targetRotationX = baseRotation.x + (state.pitch ?? 0);
-      const targetRotationY = baseRotation.y + (state.rotate ?? 0) + elapsed * (state.spin ?? 0.26);
-      const targetRotationZ = baseRotation.z + (state.tilt ?? 0) + Math.sin(elapsed * 0.6) * (state.floatTilt ?? 0.055);
+      // spin defaults to 0 (no continuous self-rotation) and the float-tilt sine is gone,
+      // so the can is fully still unless the scroll moves it.
+      const targetRotationY = baseRotation.y + (state.rotate ?? 0) + elapsed * (state.spin ?? 0);
+      const targetRotationZ = baseRotation.z + (state.tilt ?? 0);
 
       if (lockViewportPosition) {
         variant.position.copy(targetPosition);
@@ -2705,6 +2717,23 @@ function AthoraScene({ modelStateRef, scrollActivityRef, hidden = false, onCriti
       } else {
         entryMotionState.id = null;
         entryMotionState.justStarted = false;
+      }
+
+      // --- render-on-demand gate ---
+      // Mark the scene dirty whenever the scroll-driven state object changes identity
+      // (useScrollModelState hands a fresh object every scroll frame) or an animation is
+      // live, then keep drawing for a short settle window so easings finish cleanly.
+      const nowMs = performance.now();
+      if (target !== lastRenderTarget) {
+        lastRenderTarget = target;
+        dirtyUntil = nowMs + RENDER_SETTLE_MS;
+      }
+      const scrolling = nowMs - (scrollActivityRef?.current ?? 0) < RENDER_SETTLE_MS;
+      const continuousAnim = !!target.clipAutoplay || !!target.entryMotion;
+      if (!scrolling && !continuousAnim && nowMs >= dirtyUntil) {
+        // Idle: hold the last drawn frame, draw nothing.
+        raf = requestAnimationFrame(animate);
+        return;
       }
 
       if (
