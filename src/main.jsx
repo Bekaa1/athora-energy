@@ -33,7 +33,7 @@ const SECTION_THEMES = {
 };
 
 const SCREEN2_CLIP = {
-  blue: 0,
+  blue: 2.5 / 8,
   orange: 4.5 / 8,
   green: 6 / 8,
 };
@@ -45,13 +45,13 @@ const SCREEN2_FLAVOR_INDEX = {
 };
 
 const SCREEN2_TILTED_STATE = {
-  x: 1.6,
-  y: -0.96,
+  x: 1.2,
+  y: -0.55,
   z: 0,
-  scale: 1.75,
-  rotate: -0.64,
-  tilt: -0.25,
-  pitch: -0.15,
+  scale: 1.55,
+  rotate: -0.1,
+  tilt: 0,
+  pitch: 0,
   spin: 0,
   floatTilt: 0.01,
 };
@@ -141,11 +141,20 @@ const sections = [
     subcopy: 'Scroll down',
     theme: 'blue',
     modelState: {
-      ...SCREEN2_VERTICAL_STATES.blue,
+      x: 0,
+      y: -0.12,
+      z: 0,
+      scale: 1.3,
+      rotate: 0,
+      tilt: 0,
+      pitch: 0,
       scene: 3,
       opacity: 1,
-      asset: 'screen2VerticalBlue',
+      asset: 'screen2AnimatedStack',
+      clipProgress: 1.5 / 8,
       assetSwitchAt: 1.01,
+      spin: 0,
+      floatTilt: 0,
     },
   },
   {
@@ -156,6 +165,10 @@ const sections = [
     theme: 'blue',
     figmaVariant: 'hydration',
     wordStepScroll: true,
+    // Scrub (native scroll, no snap) only the tail after the last word step so the
+    // green can's GLB exit plays under the user's own scroll speed — smooth and slow,
+    // without the snap-lock stutter a long snap caused.
+    scrollScrub: { targetSectionId: 'five-products', startOffsetSteps: 3 },
     systemsSequence: [
       {
         theme: 'blue',
@@ -164,11 +177,8 @@ const sections = [
           scene: 3,
           opacity: 1,
           asset: 'screen2AnimatedStack',
-          assetSwitchAt: 0.03,
+          assetSwitchAt: 1.01,
           clipProgress: SCREEN2_CLIP.blue,
-          visibleFlavors: ['blue'],
-          backgroundFlavors: ['orange', 'green'],
-          backgroundFlavorOpacity: 1,
         },
       },
       {
@@ -180,7 +190,6 @@ const sections = [
           asset: 'screen2AnimatedStack',
           assetSwitchAt: 0.03,
           clipProgress: SCREEN2_CLIP.orange,
-          visibleFlavors: ['orange'],
         },
       },
       {
@@ -192,7 +201,6 @@ const sections = [
           asset: 'screen2AnimatedStack',
           assetSwitchAt: 0.03,
           clipProgress: SCREEN2_CLIP.green,
-          visibleFlavors: ['green'],
         },
       },
       {
@@ -203,7 +211,6 @@ const sections = [
           opacity: 1,
           asset: 'screen2AnimatedStack',
           clipProgress: SCREEN2_CLIP.green,
-          visibleFlavors: ['green'],
         },
       },
     ],
@@ -214,7 +221,6 @@ const sections = [
       opacity: 1,
       asset: 'screen2AnimatedStack',
       clipProgress: SCREEN2_CLIP.blue,
-      visibleFlavors: ['blue'],
     },
   },
   {
@@ -246,6 +252,11 @@ const sections = [
     headline: 'ATHORA',
     theme: 'blue',
     modelTransitionStart: 1,
+    // Scroll-scrubbed: the whole lineup region is native scroll (no snap) so the
+    // GLB clip plays under the user's scroll — orbit (clip 0->0.6) then break-apart
+    // into the showcase (0.6->1). Ambient orbit idle-loops only at the very top.
+    scrollScrub: { targetSectionId: 'open-can', height: '260vh' },
+    lineupClipScrub: true,
     modelState: {
       x: 0,
       y: -0.2,
@@ -273,26 +284,25 @@ const sections = [
     headlineLines: ['NO PILLS', 'NO POWDERS'],
     figmaClaim: 'open-can',
     theme: 'blue',
-    modelTransitionStart: 0.88,
-    modelClipScroll: {
-      clipStart: 0.05,
-      clipEnd: 0.84,
-      startAt: 0,
-      endAt: 0.78,
-    },
+    modelTransitionStart: 1,
+    // Scroll-scrubbed continuation of lineup: hold the showcase clip, isolate the
+    // blue can (fade green/orange/platform) and tilt to a top-down view (Figma 4423).
+    scrollScrub: { targetSectionId: 'ten-day' },
+    openCanScrub: true,
     modelState: {
       x: 0,
-      y: -0.08,
+      y: -0.2,
       z: 0,
-      scale: 1.18,
+      scale: 2.7,
       rotate: 0,
       tilt: 0,
-      pitch: 1.14,
+      pitch: -0.085,
       scene: 3,
       opacity: 1,
       asset: 'screen3Desk',
       assetSwitchAt: 1.01,
-      clipProgress: 0.84,
+      clipProgress: 0.8,
+      focusIsolation: 0,
       spin: 0,
       floatTilt: 0,
     },
@@ -472,7 +482,7 @@ const CRITICAL_PRELOAD_IMAGE_SOURCES = [
   '/figma-hero/berry-center.svg',
 ];
 const CRITICAL_PRELOAD_BINARY_SOURCES = [
-  '/blender-files/screens/2screen-blue-orange-green.glb',
+  '/blender-files/screens/1screen-another-variant.glb',
 ];
 
 THREE.Cache.enabled = true;
@@ -714,18 +724,12 @@ function getInterpolatedVisibleFlavors(a, b, t, assetSwitchAt) {
   const toFlavors = b.visibleFlavors;
 
   if (!fromFlavors && !toFlavors) return undefined;
-  if (t <= 0.001) return fromFlavors ?? toFlavors;
-  if (t >= 0.999) return toFlavors ?? fromFlavors;
-
-  if (fromFlavors?.length && toFlavors?.length) {
-    return [...new Set([...fromFlavors, ...toFlavors])];
-  }
-
   return t < assetSwitchAt ? fromFlavors : toFlavors;
 }
 
 function interpolateState(a, b, t) {
   const assetSwitchAt = a.assetSwitchAt ?? 0.5;
+  const hasFlavorProgress = Number.isFinite(a.flavorProgress) || Number.isFinite(b.flavorProgress);
 
   return {
     x: lerp(a.x, b.x, t),
@@ -738,6 +742,8 @@ function interpolateState(a, b, t) {
     opacity: lerp(a.opacity, b.opacity, t),
     spin: lerp(a.spin ?? 0.26, b.spin ?? 0.26, t),
     floatTilt: lerp(a.floatTilt ?? 0.055, b.floatTilt ?? 0.055, t),
+    focusIsolation: lerp(a.focusIsolation ?? 0, b.focusIsolation ?? 0, t),
+    sideExit: lerp(a.sideExit ?? 0, b.sideExit ?? 0, t),
     clipProgress: lerp(a.clipProgress ?? 0, b.clipProgress ?? 0, t),
     clipAutoplay: t < assetSwitchAt ? a.clipAutoplay : b.clipAutoplay,
     clipSpeed: t < assetSwitchAt ? a.clipSpeed : b.clipSpeed,
@@ -759,7 +765,7 @@ function interpolateState(a, b, t) {
       b.backgroundFlavorOpacity ?? a.backgroundFlavorOpacity ?? 1,
       t
     ),
-    flavorProgress: lerp(a.flavorProgress ?? 0, b.flavorProgress ?? a.flavorProgress ?? 0, t),
+    flavorProgress: hasFlavorProgress ? lerp(a.flavorProgress ?? 0, b.flavorProgress ?? a.flavorProgress ?? 0, t) : undefined,
     asset: t < assetSwitchAt ? a.asset : b.asset,
     scene: t < 0.5 ? a.scene : b.scene,
     entryMotion: a.entryMotion,
@@ -822,21 +828,49 @@ function createFlavorSwapState(from, to, t, index = 0) {
   };
 }
 
-function useScrollModelState() {
-  const [state, setState] = useState({
-    progress: 0,
-    activeIndex: 0,
-    sectionProgress: 0,
-    rawSectionProgress: 0,
-    showNav: false,
-    modelState: sections[0].modelState,
-  });
+function useScrollModelState(appRef) {
+  // Only activeIndex / showNav live in React state (they change when CROSSING a section,
+  // not every scroll frame). The per-frame values (modelState, theme, tint, hero-berry)
+  // are pushed to a ref + CSS variables directly, so scrolling never re-renders React.
+  const [navState, setNavState] = useState({ activeIndex: 0, showNav: false });
+  const navStateRef = useRef({ activeIndex: 0, showNav: false });
+  const modelStateRef = useRef(sections[0].modelState);
+  // Timestamp (ms) of the last scroll-driven update. The scene reads this to drop to
+  // low render resolution while scrolling. Event-driven (not frame-timing) so it never
+  // flaps regardless of frame duration.
+  const scrollActivityRef = useRef(0);
 
   useEffect(() => {
     let frame = 0;
     let lastScrollY = window.scrollY;
 
+    // Cache the last CSS-variable values written to .app so we only touch the DOM
+    // when a value actually changes. Writing a CSS custom property unconditionally
+    // every scroll frame forces a style recalc of the whole subtree even when the
+    // value is identical — which is most frames (theme/tint only move on transitions).
+    const lastCssVars = { primary: '', secondary: '', glow: '', tint: '', berry: '' };
+    const writeCssVar = (app, name, key, value) => {
+      if (lastCssVars[key] === value) return;
+      lastCssVars[key] = value;
+      app.style.setProperty(name, value);
+    };
+
     const getDocumentTop = (element) => window.scrollY + element.getBoundingClientRect().top;
+
+    // Section positions/heights only change on layout (resize/load), NOT on scroll.
+    // Cache them so the scroll handler doesn't force a full layout reflow every frame
+    // (that was tanking the framerate and making the scroll-driven animation judder).
+    let cachedMetrics = null;
+    const refreshMetrics = () => {
+      const sectionHeight = Math.max(window.innerHeight, 1);
+      cachedMetrics = sections
+        .map((section) => {
+          const element = document.getElementById(section.id);
+          if (!element) return null;
+          return { top: getDocumentTop(element), height: Math.max(element.offsetHeight, sectionHeight) };
+        })
+        .filter(Boolean);
+    };
 
     const alignHashSection = () => {
       if (!window.location.hash) return;
@@ -850,23 +884,14 @@ function useScrollModelState() {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const sectionHeight = Math.max(window.innerHeight, 1);
-        const metrics = sections
-          .map((section) => {
-            const element = document.getElementById(section.id);
-            if (!element) return null;
-
-            const top = getDocumentTop(element);
-            return {
-              top,
-              height: Math.max(element.offsetHeight, sectionHeight),
-            };
-          })
-          .filter(Boolean);
+        if (!cachedMetrics) refreshMetrics();
+        const metrics = cachedMetrics;
 
         if (!metrics.length) return;
 
         const scrollY = window.scrollY;
         const scrollDirection = scrollY < lastScrollY ? 'up' : scrollY > lastScrollY ? 'down' : 'still';
+        if (scrollDirection !== 'still') scrollActivityRef.current = performance.now();
         lastScrollY = scrollY;
         let activeIndex = metrics.findIndex((metric, index) => {
           const nextTop = metrics[index + 1]?.top ?? Number.POSITIVE_INFINITY;
@@ -934,31 +959,28 @@ function useScrollModelState() {
             interpolatedModelState = createFlavorSwapState(from, to, sequenceProgress.stepProgress, sequenceProgress.fromIndex);
           } else {
             const sequenceModelProgress = currentSection.wordStepScroll
-              ? smoothstep(0.42, 0.78, sequenceProgress.stepProgress)
+              ? smoothstep(0.12, 0.92, sequenceProgress.stepProgress)
               : smoothstep(0, 1, sequenceProgress.stepProgress);
 
             interpolatedModelState = interpolateState(from, to, sequenceModelProgress);
           }
 
           if (currentSection.wordStepScroll) {
-            const systemsExitMotion = smoothstep(0.84, 0.935, rawSectionProgress);
-            const systemsExitFade = smoothstep(0.925, 0.965, rawSectionProgress);
-            if (systemsExitMotion > 0 || systemsExitFade > 0) {
+            // Immunity -> five-products: play the GLB's green-can exit (it rotates
+            // right and rolls out of frame, clip 0.75 -> 0.9375). It finishes (rolled
+            // out + faded) by ~0.9, well before the section boundary at 1.0, so the can
+            // fully disappears while still on Immunity — THEN the rest of the scroll
+            // (0.9 -> 1.0) crosses to the five-products page with no can in frame.
+            const greenExitMotion = smoothstep(0.76, 0.88, rawSectionProgress);
+            const greenExitFade = smoothstep(0.82, 0.9, rawSectionProgress);
+            if (greenExitMotion > 0) {
               interpolatedModelState = {
                 ...interpolatedModelState,
-                x: lerp(interpolatedModelState.x, interpolatedModelState.x + 0.56, systemsExitMotion),
-                y: lerp(interpolatedModelState.y, interpolatedModelState.y - 1.12, systemsExitMotion),
-                scale: lerp(interpolatedModelState.scale, interpolatedModelState.scale * 0.84, systemsExitMotion),
-                rotate: lerp(interpolatedModelState.rotate ?? 0, (interpolatedModelState.rotate ?? 0) + 0.22, systemsExitMotion),
-                tilt: lerp(interpolatedModelState.tilt ?? 0, (interpolatedModelState.tilt ?? 0) - 0.38, systemsExitMotion),
-                opacity: lerp(interpolatedModelState.opacity ?? 1, 0, systemsExitFade),
-                secondaryModels: interpolatedModelState.secondaryModels?.map((secondaryState) => ({
-                  ...secondaryState,
-                  x: lerp(secondaryState.x, secondaryState.x + 0.56, systemsExitMotion),
-                  y: lerp(secondaryState.y, secondaryState.y - 1.12, systemsExitMotion),
-                  scale: lerp(secondaryState.scale, secondaryState.scale * 0.84, systemsExitMotion),
-                  opacity: lerp(secondaryState.opacity ?? 1, 0, systemsExitFade),
-                })),
+                clipProgress: lerp(interpolatedModelState.clipProgress ?? SCREEN2_CLIP.green, 7.5 / 8, greenExitMotion),
+                opacity: lerp(interpolatedModelState.opacity ?? 1, 0, greenExitFade),
+                // Track the scroll directly (no clip damping) so the roll-out keeps pace
+                // with the scroll instead of crawling out in slow-motion.
+                clipDirect: true,
               };
             }
           }
@@ -995,6 +1017,61 @@ function useScrollModelState() {
             clipIdleLoop: false,
             opacity: lerp(currentClipOpacity, clipConfig.opacityEnd ?? 0, clipOpacityAmount),
             clipProgress: lerp(clipConfig.clipStart ?? 0, clipConfig.clipEnd ?? 1, clipAmount),
+          };
+        }
+
+        if (currentSection.lineupClipScrub) {
+          if (rawSectionProgress <= 0.004) {
+            // Ambient revolver orbit at the landing (clipProgress 0 -> idle loop).
+            interpolatedModelState = {
+              ...interpolatedModelState,
+              clipProgress: 0,
+              clipIdleLoop: true,
+            };
+          } else {
+            // Any scroll goes straight into the break-apart (clip 0.6 = blue already
+            // at the front; 0.6->0.8 = the symmetric blue-centre showcase). No orbit
+            // replay, so one scroll immediately starts the spread. The idle->scrub
+            // hand-off is smoothed by the clip damping (which seeds from the live
+            // orbit phase) so it eases to blue-front instead of jumping.
+            const clip = 0.6 + rawSectionProgress * 0.2;
+            interpolatedModelState = {
+              ...interpolatedModelState,
+              clipProgress: clamp(clip, 0.6, 0.8),
+              clipIdleLoop: false,
+            };
+          }
+        }
+
+        if (currentSection.openCanScrub) {
+          // Continue from the lineup showcase (clip 0.8, 3 cans): isolate the blue
+          // can (fade green/orange/platform) and tilt to a top-down view.
+          const p = rawSectionProgress;
+          const isolate = smoothstep(0.0, 0.25, p);
+          const topView = smoothstep(0.0, 0.35, p);
+          // Green/orange slide off-frame (left/right) as the blue can rises to the
+          // top-down view.
+          const sideExit = smoothstep(0.05, 0.3, p);
+          // Blue can plays its GLB exit spin in-frame first (clip 0.8->1.0: the can
+          // rotates ry -38/+27/-37 while drifting left), THEN a code slide carries it
+          // the rest of the way off-frame + fade. All finishes by ~0.71, inside the
+          // sticky-pinned range (~0.74 for the 380vh panel), so the can disappears while
+          // "NO PILLS" is still up, before the price scrolls in.
+          const exit = smoothstep(0.42, 0.62, p);
+          const slideOff = smoothstep(0.6, 0.7, p);
+          const exitFade = smoothstep(0.63, 0.71, p);
+          interpolatedModelState = {
+            ...interpolatedModelState,
+            asset: 'screen3Desk',
+            clipIdleLoop: false,
+            clipProgress: lerp(0.8, 1.0, exit),
+            focusIsolation: isolate,
+            sideExit,
+            pitch: lerp(-0.085, 0.85, topView),
+            scale: lerp(2.7, 2.8, topView),
+            y: lerp(-0.2, 1.25, topView),
+            x: lerp(0, -3.4, slideOff),
+            opacity: lerp(1, 0, exitFade),
           };
         }
 
@@ -1070,22 +1147,84 @@ function useScrollModelState() {
           }
         }
 
-        if (currentSection.id === 'access') {
+        // Last-screen can: keep it anchored to its place in the 1100px access frame.
+        // The can lives in a viewport-fixed canvas, so by default it stays glued to the
+        // screen while the form/footer scroll past it (it appears to drift down relative
+        // to the layout). Offset its position with the in-section scroll so it travels
+        // WITH the content and holds its designed spot. Animation + fade-in untouched.
+        if (currentSection.id === 'access' || interpolatedModelState.asset === 'lastScreen') {
+          const accessModelState = sections.find((section) => section.id === 'access').modelState;
+          // NOTE: the scroll-follow offset that keeps the can in its layout spot is
+          // applied LIVE in the render loop (from window.scrollY) to avoid the
+          // React-state lag that made the can drift then snap back.
           interpolatedModelState = {
-            ...currentSection.modelState,
+            ...interpolatedModelState,
+            x: accessModelState.x,
+            y: accessModelState.y,
+            z: accessModelState.z ?? 0,
+            scale: accessModelState.scale,
+            rotate: accessModelState.rotate ?? 0,
+            tilt: accessModelState.tilt ?? 0,
+            pitch: accessModelState.pitch ?? 0,
+            spin: 0,
+            floatTilt: 0,
             lockAnimatedPositions: true,
             lockVisualCenter: true,
+            lockViewportPosition: true,
           };
         }
 
-        const nextState = {
-          progress: clamp(scrollY / totalScrollable, 0, 1),
-          activeIndex,
-          sectionProgress,
-          rawSectionProgress,
-          showNav,
-          modelState: interpolatedModelState,
-        };
+        modelStateRef.current = interpolatedModelState;
+
+        // Theme, systems tint and hero-berry opacity are written straight to CSS
+        // variables on the app element each frame — no React re-render on scroll.
+        const app = appRef && appRef.current;
+        if (app) {
+          const nextSection = sections[activeIndex + 1];
+
+          // --- active theme (mirrors the former activeTheme useMemo) ---
+          const currentTheme = SECTION_THEMES[currentSection?.theme || 'blue'];
+          let theme = currentTheme;
+          if (currentSection?.systemsSequence?.length) {
+            const sp = getSystemsSequenceProgress(currentSection, sectionProgress);
+            const fromTheme = SECTION_THEMES[sp.sequence[sp.fromIndex]?.theme || currentSection.theme];
+            const toTheme = SECTION_THEMES[sp.sequence[sp.toIndex]?.theme || currentSection.theme];
+            const nextTheme = nextSection ? SECTION_THEMES[nextSection.theme] : null;
+            const seqTheme = mixTheme(fromTheme, toTheme, smoothstep(0, 1, sp.stepProgress));
+            const exitP = nextTheme ? smoothstep(0.76, 0.98, rawSectionProgress) : 0;
+            theme = exitP > 0 ? mixTheme(seqTheme, nextTheme, exitP) : seqTheme;
+          } else if (currentSection?.type === 'systems' && nextSection?.type === 'systems') {
+            theme = mixTheme(currentTheme, SECTION_THEMES[nextSection.theme], smoothstep(0.78, 1, sectionProgress));
+          }
+
+          // --- systems tint (mirrors the former systemsTintOpacity useMemo) ---
+          let tint = 0;
+          if (currentSection?.type === 'systems') {
+            if (currentSection.systemsSequence?.length) {
+              const sp = getSystemsSequenceProgress(currentSection, sectionProgress);
+              const fromThemeKey = sp.sequence[sp.fromIndex]?.theme || currentSection.theme;
+              const toThemeKey = sp.sequence[sp.toIndex]?.theme || fromThemeKey;
+              const isBlueStep = fromThemeKey === 'blue' && toThemeKey === 'blue';
+              const nextThemeKey = nextSection?.theme || 'blue';
+              const tintExit = nextSection && nextThemeKey === 'blue' && toThemeKey !== 'blue' ? smoothstep(0.76, 0.98, rawSectionProgress) : 0;
+              if (isBlueStep) tint = 0;
+              else if (tintExit > 0) tint = lerp(0.86, 0, tintExit);
+              else if (fromThemeKey === 'blue') tint = smoothstep(0.18, 1, sp.stepProgress) * 0.86;
+              else tint = 0.86;
+            } else if (currentSection.theme === 'blue' && nextSection?.type === 'systems') {
+              tint = smoothstep(0.78, 1, sectionProgress) * 0.86;
+            } else {
+              tint = currentSection.theme === 'blue' ? 0 : 0.86;
+            }
+          }
+
+          const berry = currentSection?.id === 'intro' ? 1 - smoothstep(0.14, 0.58, sectionProgress) : 0;
+          writeCssVar(app, '--active-primary', 'primary', theme.primary);
+          writeCssVar(app, '--active-secondary', 'secondary', theme.secondary);
+          writeCssVar(app, '--active-glow', 'glow', theme.glow);
+          writeCssVar(app, '--systems-tint-opacity', 'tint', String(tint));
+          writeCssVar(app, '--hero-berry-opacity', 'berry', String(berry));
+        }
 
         window.__athoraDebug = {
           activeIndex,
@@ -1098,11 +1237,15 @@ function useScrollModelState() {
           modelState: interpolatedModelState,
         };
 
-        setState(nextState);
+        if (activeIndex !== navStateRef.current.activeIndex || showNav !== navStateRef.current.showNav) {
+          navStateRef.current = { activeIndex, showNav };
+          setNavState({ activeIndex, showNav });
+        }
       });
     };
 
     const sync = () => {
+      refreshMetrics();
       alignHashSection();
       update();
     };
@@ -1113,6 +1256,22 @@ function useScrollModelState() {
     window.addEventListener('resize', sync);
     window.addEventListener('hashchange', sync);
     window.addEventListener('load', sync);
+
+    // The preloader collapses the full-height install panel (height -> 0) via React
+    // state AFTER the delayed syncs above have run, with NO resize event. That shifts
+    // every section up ~1 viewport, leaving the cached metrics stale — so at scrollY 0
+    // the hook still thinks it's on 'installing' (opacity-0 can) and the intro looks
+    // empty until you scroll a screen. Observe the document height so any layout change
+    // (preloader collapse, late image/font loads) refreshes the cached metrics.
+    let resizeObserver = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        refreshMetrics();
+        update();
+      });
+      resizeObserver.observe(document.body);
+    }
+
     return () => {
       cancelAnimationFrame(frame);
       delayedUpdates.forEach((timer) => window.clearTimeout(timer));
@@ -1120,10 +1279,11 @@ function useScrollModelState() {
       window.removeEventListener('resize', sync);
       window.removeEventListener('hashchange', sync);
       window.removeEventListener('load', sync);
+      if (resizeObserver) resizeObserver.disconnect();
     };
   }, []);
 
-  return state;
+  return { activeIndex: navState.activeIndex, showNav: navState.showNav, modelStateRef, scrollActivityRef };
 }
 
 function useStartAtPreloaderOnPageLoad() {
@@ -1284,6 +1444,35 @@ function useControlledStepScroll(enabled) {
       window.__athoraFruitExitTransition = null;
     };
 
+    // Inertial (smooth) scrolling for scrub ranges: discrete wheel notches accumulate
+    // into a target that the page eases toward each frame, turning the choppy native
+    // scroll into continuous motion so the scroll-driven 3D animation stops juddering.
+    let smoothTarget = null;
+    let smoothRaf = 0;
+    const stopSmoothScroll = () => {
+      if (smoothRaf) window.cancelAnimationFrame(smoothRaf);
+      smoothRaf = 0;
+      smoothTarget = null;
+    };
+    const smoothScrollStep = () => {
+      if (smoothTarget == null) { smoothRaf = 0; return; }
+      const current = window.scrollY;
+      const diff = smoothTarget - current;
+      if (Math.abs(diff) <= 0.5) {
+        window.scrollTo(0, Math.round(smoothTarget));
+        smoothTarget = null;
+        smoothRaf = 0;
+        return;
+      }
+      window.scrollTo(0, current + diff * 0.16);
+      smoothRaf = window.requestAnimationFrame(smoothScrollStep);
+    };
+    const smoothScrollBy = (delta) => {
+      const base = smoothTarget == null ? window.scrollY : smoothTarget;
+      smoothTarget = clamp(base + delta, 0, getMaxScroll());
+      if (!smoothRaf) smoothRaf = window.requestAnimationFrame(smoothScrollStep);
+    };
+
     const getDocumentTopById = (id) => {
       const element = document.getElementById(id);
       return element ? Math.round(window.scrollY + element.getBoundingClientRect().top) : null;
@@ -1293,9 +1482,13 @@ function useControlledStepScroll(enabled) {
       const currentTop = Math.round(window.scrollY);
 
       return scrollScrubSections.some((section) => {
-        const scrubTop = getDocumentTopById(section.id);
+        const sectionTop = getDocumentTopById(section.id);
         const targetTop = getDocumentTopById(section.scrollScrub.targetSectionId);
-        if (scrubTop === null || targetTop === null || targetTop <= scrubTop) return false;
+        if (sectionTop === null || targetTop === null) return false;
+        // Optional offset so only the tail of a stepped section scrubs (the word
+        // steps before it still snap normally).
+        const scrubTop = sectionTop + (section.scrollScrub.startOffsetSteps || 0) * window.innerHeight;
+        if (targetTop <= scrubTop) return false;
 
         if (direction > 0) {
           return currentTop >= scrubTop - 8 && currentTop < targetTop - 8;
@@ -1435,7 +1628,11 @@ function useControlledStepScroll(enabled) {
         return;
       }
 
-      if (isNativeScrollScrubRange(direction)) return;
+      if (isNativeScrollScrubRange(direction)) {
+        event.preventDefault();
+        smoothScrollBy(delta);
+        return;
+      }
 
       if (moveOneStep(direction)) {
         event.preventDefault();
@@ -1503,6 +1700,7 @@ function useControlledStepScroll(enabled) {
 
     return () => {
       unlock();
+      stopSmoothScroll();
       window.removeEventListener('wheel', handleWheel);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('touchstart', handleTouchStart);
@@ -1533,9 +1731,11 @@ function useScrollScrubSnapMode(enabled) {
       frame = window.requestAnimationFrame(() => {
         const currentTop = Math.round(window.scrollY);
         const isInScrubRange = scrollScrubSections.some((section) => {
-          const scrubTop = getDocumentTopById(section.id);
+          const sectionTop = getDocumentTopById(section.id);
           const targetTop = getDocumentTopById(section.scrollScrub.targetSectionId);
-          return scrubTop !== null && targetTop !== null && currentTop >= scrubTop - 8 && currentTop <= targetTop + 8;
+          if (sectionTop === null || targetTop === null) return false;
+          const scrubTop = sectionTop + (section.scrollScrub.startOffsetSteps || 0) * window.innerHeight;
+          return currentTop >= scrubTop - 8 && currentTop <= targetTop + 8;
         });
 
         html.classList.toggle('athora-scroll-scrub', isInScrubRange);
@@ -1588,14 +1788,11 @@ function normalizeObjectAfterScale(object, targetHeight = 3.35) {
   );
 }
 
-function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
+function AthoraScene({ modelStateRef, scrollActivityRef, hidden = false, onCriticalAssetsReady }) {
+  // modelStateRef is a shared ref written every scroll frame by useScrollModelState.
+  // Reading it in the render loop (instead of a prop) keeps scrolling out of React.
   const mountRef = useRef(null);
-  const modelStateRef = useRef(modelState);
   const onCriticalAssetsReadyRef = useRef(onCriticalAssetsReady);
-
-  useEffect(() => {
-    modelStateRef.current = modelState;
-  }, [modelState]);
 
   useEffect(() => {
     onCriticalAssetsReadyRef.current = onCriticalAssetsReady;
@@ -1608,7 +1805,14 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
     camera.position.set(0, 0.1, 8);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+    // Dynamic resolution: render at full res when the can is idle (crisp hero shot),
+    // drop to a lower res while the user is actively scrolling (motion hides the
+    // softness). renderer.render() is ~92% of per-frame JS time and ~16/28 of that
+    // scales with pixel count, so this roughly halves the fill-rate cost during scroll.
+    const HIGH_RATIO = Math.min(window.devicePixelRatio, 1);
+    const LOW_RATIO = Math.max(HIGH_RATIO * 0.6, 0.5);
+    let activeRatio = HIGH_RATIO;
+    renderer.setPixelRatio(HIGH_RATIO);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.35;
@@ -1735,7 +1939,9 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
               ? materials.map((material) => material.clone())
               : child.material.clone();
             const clonedMaterials = Array.isArray(child.material) ? child.material : [child.material];
-            const flavorIndex = options.flavorDriven ? getFlavorIndex(child, clonedMaterials) : null;
+            const flavorIndex = options.flavorDriven || options.forceFlavorBaseOpacity
+              ? getFlavorIndex(child, clonedMaterials)
+              : null;
             if (flavorIndex !== null) {
               child.userData.flavorIndex = flavorIndex;
               flavorMeshes.push(child);
@@ -1744,7 +1950,10 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
               tuneCanMaterial(material, options.materialProfile);
               tuneLineupMaterial(material);
               material.transparent = material.transparent || material.opacity < 1;
-              material.userData.baseOpacity = material.opacity ?? 1;
+              const baseOpacity = (options.flavorDriven || options.forceFlavorBaseOpacity) && flavorIndex !== null
+                ? 1
+                : (material.opacity ?? 1);
+              material.userData.baseOpacity = baseOpacity;
               material.userData.baseTransparent = material.transparent;
               material.userData.baseDepthWrite = material.depthWrite;
               material.needsUpdate = true;
@@ -1875,7 +2084,7 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         ? new Set(targetState.backgroundFlavors.map((flavor) => SCREEN2_FLAVOR_INDEX[flavor]).filter((index) => index !== undefined))
         : null;
       const lineupIsolation = targetState.asset === 'screen3Desk'
-        ? smoothstep(0.56, 0.74, targetState.clipProgress ?? 0)
+        ? clamp(targetState.focusIsolation ?? 0, 0, 1)
         : 0;
       const visibleFlavorKey = visibleFlavorIndices ? [...visibleFlavorIndices].sort().join(',') : 'all';
       const backgroundFlavorKey = backgroundFlavorIndices ? [...backgroundFlavorIndices].sort().join(',') : 'none';
@@ -1916,16 +2125,12 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
           : 1;
 
         const nextOpacity = material.userData.baseOpacity * variantOpacity * flavorOpacity * lineupOpacity;
-        const shouldBeTransparent = material.userData.baseTransparent || nextOpacity < 0.999;
-        if (material.transparent !== shouldBeTransparent) {
-          material.transparent = shouldBeTransparent;
-          material.needsUpdate = true;
-        }
-        const nextDepthWrite = nextOpacity > 0.001 ? material.userData.baseDepthWrite : false;
-        if (material.depthWrite !== nextDepthWrite) {
-          material.depthWrite = nextDepthWrite;
-          material.needsUpdate = true;
-        }
+        // transparent / depthWrite are GL render state that the renderer applies every
+        // frame — toggling them does NOT require a shader recompile. Setting needsUpdate
+        // here forced ~20 program recompiles mid-fade (e.g. the green can exit into
+        // five-products), which tanked the framerate. Update the state without needsUpdate.
+        material.transparent = material.userData.baseTransparent || nextOpacity < 0.999;
+        material.depthWrite = nextOpacity > 0.001 ? material.userData.baseDepthWrite : false;
         material.opacity = nextOpacity;
       });
     };
@@ -1951,11 +2156,11 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         return;
       }
 
-      const clipProgress = clamp(targetState.clipProgress ?? 0, 0, 1);
+      const targetClip = clamp(targetState.clipProgress ?? 0, 0, 1);
       const shouldIdleLoop = targetState.asset === 'screen3Desk'
         && targetState.clipIdleLoop
-        && clipProgress <= 0.001;
-      let poseKey = `scroll:${Math.round(clipProgress * 1000)}`;
+        && targetClip <= 0.001;
+      let poseKey = `scroll:${Math.round(targetClip * 1000)}`;
 
       if (shouldIdleLoop) {
         const loopStart = clamp(targetState.clipIdleLoopStart ?? 0, 0, boundAnimation.duration);
@@ -1965,14 +2170,43 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         const loopTime = loopStart + ((elapsed * speed) % loopDuration);
         boundAnimation.mixer.setTime(loopTime);
         variant.userData.lastClipProgress = null;
+        // Seed the damped clip from the live orbit phase so that when the user
+        // starts scrolling, the scrub eases from the current orbit pose to the
+        // break-apart start (blue front) instead of snapping.
+        variant.userData.displayedClip = loopTime / boundAnimation.duration;
         poseKey = `idle:${Math.round(loopTime * 1000)}`;
-      } else if (
-        Math.abs((variant.userData.lastClipProgress ?? -1) - clipProgress) > 0.001
-      ) {
-        boundAnimation.mixer.setTime(boundAnimation.duration * clipProgress);
-        variant.userData.lastClipProgress = clipProgress;
+      } else {
+        // Damp the displayed clip toward the target so discrete wheel-scroll steps
+        // scrub the desk animation smoothly instead of jumping per scroll notch.
+        let displayedClip = targetClip;
+        // clipDirect (e.g. the green-can exit) is already driven smoothly by the native
+        // scroll scrub, so adding clip damping on top just makes it crawl in slow-mo.
+        // Track the scroll value 1:1 there; keep damping for the snap-stepped carousel.
+        if (!targetState.clipDirect && (targetState.asset === 'screen3Desk' || targetState.asset === 'screen2AnimatedStack')) {
+          const prev = variant.userData.displayedClip;
+          if (prev == null) {
+            displayedClip = targetClip;
+          } else {
+            const k = 1 - Math.exp(-10 * delta);
+            let next = prev + (targetClip - prev) * k;
+            // Cap the per-frame change so a large jump (e.g. the idle-orbit -> break-apart
+            // hand-off) eases into a smooth turn instead of a blurred jump.
+            const maxStep = 0.02;
+            next = clamp(next, prev - maxStep, prev + maxStep);
+            displayedClip = next;
+          }
+          variant.userData.displayedClip = displayedClip;
+        } else {
+          variant.userData.displayedClip = targetState.clipDirect ? targetClip : null;
+        }
+        if (Math.abs((variant.userData.lastClipProgress ?? -1) - displayedClip) > 0.0004) {
+          boundAnimation.mixer.setTime(boundAnimation.duration * displayedClip);
+          variant.userData.lastClipProgress = displayedClip;
+        }
+        poseKey = `scroll:${Math.round(displayedClip * 1000)}`;
       }
 
+      const sideExit = clamp(targetState.sideExit ?? 0, 0, 1);
       const lineupChildren = variant.userData.lineupChildren || [];
       lineupChildren.forEach((child) => {
         const offset = child.userData.lineupOffset;
@@ -1982,8 +2216,14 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
             child.userData.lineupBasePositionKey = poseKey;
           }
           const basePosition = child.userData.lineupBasePosition;
+          // Slide the side cans (green left, orange right) off-frame as sideExit ramps.
+          let sideX = 0;
+          if (sideExit > 0 && child.userData.lineupRole === 'lineup-side') {
+            const dir = /\.006/.test(child.name) ? -1 : 1;
+            sideX = dir * sideExit * 4.2;
+          }
           child.position.set(
-            basePosition.x + offset.x,
+            basePosition.x + offset.x + sideX,
             basePosition.y + offset.y,
             basePosition.z + offset.z
           );
@@ -1999,8 +2239,17 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       const previousWrapVisible = modelWrap.visible;
       const previousVariantVisible = variant.visible;
       const materialStates = [];
+      const visibilityStates = [];
 
       variant.traverse((child) => {
+        // Force every mesh visible during compile. Flavor meshes (orange/green cans)
+        // are hidden until their step, so renderer.compile would otherwise skip them and
+        // their shaders would compile on first reveal mid-scroll (e.g. the green-can exit
+        // into five-products) — a ~20-program stall that tanked the framerate there.
+        if (child.visible === false) {
+          visibilityStates.push(child);
+          child.visible = true;
+        }
         if (!child.isMesh || !child.material) return;
         const materials = Array.isArray(child.material) ? child.material : [child.material];
         materials.forEach((material) => {
@@ -2008,9 +2257,12 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
             material,
             colorWrite: material.colorWrite,
             depthWrite: material.depthWrite,
+            transparent: material.transparent,
           });
           material.colorWrite = false;
           material.depthWrite = false;
+          // Compile the transparent variant of the program too (the fade path uses it).
+          material.transparent = true;
         });
       });
 
@@ -2021,10 +2273,12 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         renderer.compile(scene, camera);
         renderer.render(scene, camera);
       } finally {
-        materialStates.forEach(({ material, colorWrite, depthWrite }) => {
+        materialStates.forEach(({ material, colorWrite, depthWrite, transparent }) => {
           material.colorWrite = colorWrite;
           material.depthWrite = depthWrite;
+          material.transparent = transparent;
         });
+        visibilityStates.forEach((child) => { child.visible = false; });
         variant.visible = previousVariantVisible;
         modelWrap.visible = previousWrapVisible;
       }
@@ -2224,7 +2478,7 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
     };
 
     loader.load(
-      '/blender-files/screens/2screen-blue-orange-green.glb',
+      '/blender-files/screens/1screen-another-variant.glb',
       (gltf) => {
         const createVerticalVariant = (flavorIndex, materialProfile) => {
           const clone = gltf.scene.clone(true);
@@ -2239,7 +2493,7 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
           });
           removableMeshes.forEach((child) => child.parent?.remove(child));
 
-          return prepareClone(clone, 3.35, { materialProfile });
+          return prepareClone(clone, 3.35, { materialProfile, forceFlavorBaseOpacity: true });
         };
 
         assetVariants.screen2VerticalBlue = createVerticalVariant(0, SCREEN2_VERTICAL_MATERIALS.blue);
@@ -2297,6 +2551,15 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       camera.updateProjectionMatrix();
     };
 
+    // Switch render resolution only on mode change (hysteresis) — never every frame —
+    // so a scroll gesture costs at most two framebuffer reallocations.
+    const setRenderScale = (ratio) => {
+      if (activeRatio === ratio) return;
+      activeRatio = ratio;
+      renderer.setPixelRatio(ratio);
+      renderer.setSize(mount.clientWidth, mount.clientHeight);
+    };
+
     resize();
     window.addEventListener('resize', resize);
 
@@ -2321,9 +2584,20 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
         ? 1
         : clamp(state.visualCenterLockStrength ?? (state.lockVisualCenter ? 1 : 0), 0, 1);
       const liveScale = state.scale * viewportScale * (lockViewportPosition ? 1 : 1 + Math.sin(elapsed * 1.5) * 0.012);
+      // Last-screen can travels with the page as you scroll within the access frame.
+      // Computed live from window.scrollY (not React state) so there is no lag/snap.
+      let scrollFollowY = 0;
+      if (state.asset === 'lastScreen') {
+        const accessEl = document.getElementById('access');
+        if (accessEl) {
+          const accessTop = accessEl.getBoundingClientRect().top + window.scrollY;
+          const scrollWithin = Math.max(window.scrollY - accessTop, 0);
+          scrollFollowY = scrollWithin * 0.0063; // ~viewport-world-height / viewport-px
+        }
+      }
       const targetPosition = new THREE.Vector3(
         basePosition.x + state.x,
-        basePosition.y + state.y,
+        basePosition.y + state.y + scrollFollowY,
         basePosition.z + (state.z ?? 0)
       );
       const targetScale = new THREE.Vector3(
@@ -2377,6 +2651,12 @@ function AthoraScene({ modelState, hidden = false, onCriticalAssetsReady }) {
       const delta = Math.min(clock.getDelta(), 0.033);
       const elapsed = clock.elapsedTime;
       let target = modelStateRef.current;
+
+      // Drop to low render resolution while actively scrolling, restore full res
+      // ~0.22s after the last scroll event so the settled frame is crisp. Event-driven
+      // (scrollActivityRef is stamped by the scroll handler) so it can't flap at low fps.
+      const sinceScroll = performance.now() - (scrollActivityRef?.current ?? 0);
+      setRenderScale(sinceScroll < 220 ? LOW_RATIO : HIGH_RATIO);
 
       const entryMotion = target.entryMotion;
       if (entryMotion) {
@@ -2664,17 +2944,15 @@ function FigmaHeroBackground() {
   );
 }
 
-function FixedHeroSequenceBackground({ visible, berryOpacity }) {
-  const className = [
-    'hero-sequence-bg',
-    visible ? 'hero-sequence-bg-visible' : '',
-    berryOpacity > 0.01 ? 'hero-sequence-bg-with-berry' : '',
-  ]
+function FixedHeroSequenceBackground({ visible }) {
+  // berry opacity is driven by the inherited --hero-berry-opacity CSS variable,
+  // written straight to the .app element each scroll frame (no React re-render).
+  const className = ['hero-sequence-bg', visible ? 'hero-sequence-bg-visible' : '']
     .filter(Boolean)
     .join(' ');
 
   return (
-    <div className={className} style={{ '--hero-berry-opacity': berryOpacity }} aria-hidden="true">
+    <div className={className} aria-hidden="true">
       <FigmaHeroBackground />
     </div>
   );
@@ -3054,7 +3332,7 @@ function SystemsSection({ section }) {
 
 function ClaimSection({ section }) {
   const isFigmaClaim = Boolean(section.figmaClaim);
-  const hasStickyMotion = Boolean(section.modelClipScroll);
+  const hasStickyMotion = Boolean(section.modelClipScroll || section.scrollScrub);
   const desktopLines = section.headlineLines || [section.headline];
   const mobileLines = section.mobileHeadlineLines || desktopLines;
   const hasMobileLines = Boolean(section.mobileHeadlineLines);
@@ -3074,7 +3352,16 @@ function ClaimSection({ section }) {
           </span>
         ) : null}
       </h2>
-      <ScrollDown />
+      {section.figmaClaim === 'open-can' ? (
+        <p className="open-label" aria-hidden="true">
+          <span className="open-letter open-letter-o">O</span>
+          <span className="open-letter open-letter-p">P</span>
+          <span className="open-letter open-letter-e">E</span>
+          <span className="open-letter open-letter-n">N</span>
+        </p>
+      ) : (
+        <ScrollDown />
+      )}
     </>
   );
 
@@ -3092,7 +3379,7 @@ function ClaimSection({ section }) {
   );
 }
 
-function usePinnedStackProgress(sectionRef, itemCount) {
+function usePinnedStackProgress(sectionRef, itemCount, scrollSegments = null) {
   const [progress, setProgress] = useState(0);
   const progressRef = useRef(-1);
 
@@ -3108,7 +3395,12 @@ function usePinnedStackProgress(sectionRef, itemCount) {
         if (!section) return;
 
         const sectionTop = window.scrollY + section.getBoundingClientRect().top;
-        const scrollRange = Math.max(section.offsetHeight - window.innerHeight, 1);
+        // When scrollSegments is given, map progress over just that many viewports
+        // (so extra tail height added for an exit animation does not slow the words).
+        const scrollRange = Math.max(
+          scrollSegments != null ? scrollSegments * window.innerHeight : section.offsetHeight - window.innerHeight,
+          1
+        );
         const rawProgress = clamp((window.scrollY - sectionTop) / scrollRange, 0, 1) * (itemCount - 1);
         const nextProgress = Math.round(rawProgress * 1000) / 1000;
 
@@ -3128,7 +3420,7 @@ function usePinnedStackProgress(sectionRef, itemCount) {
       window.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
     };
-  }, [itemCount, sectionRef]);
+  }, [itemCount, sectionRef, scrollSegments]);
 
   return progress;
 }
@@ -3248,8 +3540,9 @@ function ClaimStackSection({ section }) {
 }
 
 function ProductLineupSection({ section }) {
-  return (
-    <section className={`panel lineup-panel figma-lineup-panel ${SECTION_THEMES[section.theme].className}`} id={section.id}>
+  const isScrollScrub = Boolean(section.scrollScrub);
+  const content = (
+    <>
       <img
         className="lineup-brand-wordmark lineup-brand-vector"
         src="/figma-lineup/athora-vector-wordmark.svg"
@@ -3257,6 +3550,18 @@ function ProductLineupSection({ section }) {
         draggable="false"
       />
       <ScrollDown />
+    </>
+  );
+
+  return (
+    <section
+      className={`panel lineup-panel figma-lineup-panel ${
+        isScrollScrub ? 'lineup-panel-scroll-scrub' : ''
+      } ${SECTION_THEMES[section.theme].className}`}
+      id={section.id}
+      style={isScrollScrub ? { '--lineup-scroll-scrub-height': section.scrollScrub.height || '220vh' } : undefined}
+    >
+      {isScrollScrub ? <div className="lineup-scroll-scrub-stage">{content}</div> : content}
     </section>
   );
 }
@@ -3664,7 +3969,7 @@ function LegalPage({ page }) {
   );
 }
 
-function SectionRenderer({ section, onIntroReveal, isActive, criticalAssetsReady }) {
+const SectionRenderer = React.memo(function SectionRenderer({ section, onIntroReveal, isActive, criticalAssetsReady }) {
   switch (section.type) {
     case 'install':
       return <InstallSection section={section} onIntroReveal={onIntroReveal} criticalAssetsReady={criticalAssetsReady} />;
@@ -3695,66 +4000,14 @@ function SectionRenderer({ section, onIntroReveal, isActive, criticalAssetsReady
     default:
       return <ClaimSection section={section} />;
   }
-}
+});
 
 function LandingApp() {
   useStartAtPreloaderOnPageLoad();
 
-  const { activeIndex, sectionProgress, rawSectionProgress, modelState, showNav } = useScrollModelState();
+  const appRef = useRef(null);
+  const { activeIndex, showNav, modelStateRef, scrollActivityRef } = useScrollModelState(appRef);
   const activeSection = sections[activeIndex];
-  const systemsTintOpacity = useMemo(() => {
-    const currentSection = sections[activeIndex];
-    const nextSection = sections[activeIndex + 1];
-
-    if (currentSection?.type !== 'systems') return 0;
-    if (currentSection.systemsSequence?.length) {
-      const sequenceProgress = getSystemsSequenceProgress(currentSection, sectionProgress);
-      const fromTheme = sequenceProgress.sequence[sequenceProgress.fromIndex]?.theme || currentSection.theme;
-      const toTheme = sequenceProgress.sequence[sequenceProgress.toIndex]?.theme || fromTheme;
-      const isBlueStep = fromTheme === 'blue' && toTheme === 'blue';
-      const nextTheme = nextSection?.theme || 'blue';
-      const exitProgress =
-        nextSection && nextTheme === 'blue' && toTheme !== 'blue' ? smoothstep(0.76, 0.98, rawSectionProgress) : 0;
-
-      if (isBlueStep) return 0;
-      if (exitProgress > 0) return lerp(0.86, 0, exitProgress);
-      if (fromTheme === 'blue') {
-        return smoothstep(0.18, 1, sequenceProgress.stepProgress) * 0.86;
-      }
-
-      return 0.86;
-    }
-
-    if (currentSection.theme === 'blue' && nextSection?.type === 'systems') {
-      return smoothstep(0.78, 1, sectionProgress) * 0.86;
-    }
-
-    return currentSection.theme === 'blue' ? 0 : 0.86;
-  }, [activeIndex, sectionProgress, rawSectionProgress]);
-  const activeTheme = useMemo(() => {
-    const currentSection = sections[activeIndex];
-    const nextSection = sections[activeIndex + 1];
-    const currentTheme = SECTION_THEMES[currentSection?.theme || 'blue'];
-
-    if (currentSection?.systemsSequence?.length) {
-      const sequenceProgress = getSystemsSequenceProgress(currentSection, sectionProgress);
-      const fromTheme = SECTION_THEMES[sequenceProgress.sequence[sequenceProgress.fromIndex]?.theme || currentSection.theme];
-      const toTheme = SECTION_THEMES[sequenceProgress.sequence[sequenceProgress.toIndex]?.theme || currentSection.theme];
-      const nextTheme = nextSection ? SECTION_THEMES[nextSection.theme] : null;
-      const sequenceTheme = mixTheme(fromTheme, toTheme, smoothstep(0, 1, sequenceProgress.stepProgress));
-      const exitProgress = nextTheme ? smoothstep(0.76, 0.98, rawSectionProgress) : 0;
-
-      return exitProgress > 0 ? mixTheme(sequenceTheme, nextTheme, exitProgress) : sequenceTheme;
-    }
-
-    if (currentSection?.type === 'systems' && nextSection?.type === 'systems') {
-      const morphProgress = smoothstep(0.78, 1, sectionProgress);
-      return mixTheme(currentTheme, SECTION_THEMES[nextSection.theme], morphProgress);
-    }
-
-    return currentTheme;
-  }, [activeIndex, sectionProgress, rawSectionProgress]);
-  const heroBerryOpacity = activeSection?.id === 'intro' ? 1 - smoothstep(0.14, 0.58, sectionProgress) : 0;
   const [preloaderLocked, setPreloaderLocked] = useState(false);
   const [introRevealPhase, setIntroRevealPhase] = useState('idle');
   const [introSceneHeld, setIntroSceneHeld] = useState(false);
@@ -3900,15 +4153,10 @@ function LandingApp() {
 
   return (
     <div
+      ref={appRef}
       className={`app ${preloaderLocked ? 'app-preloader-locked' : ''}`}
-      style={{
-        '--active-primary': activeTheme.primary,
-        '--active-secondary': activeTheme.secondary,
-        '--active-glow': activeTheme.glow,
-        '--systems-tint-opacity': systemsTintOpacity,
-      }}
     >
-      <FixedHeroSequenceBackground visible={activeIndex === 1} berryOpacity={heroBerryOpacity} />
+      <FixedHeroSequenceBackground visible={activeIndex === 1} />
       <FixedSystemsBackground
         visible={
           activeSection?.type === 'systems' ||
@@ -3924,7 +4172,8 @@ function LandingApp() {
       <FixedDetailMorphBackground visible={showDetailMorphBg} />
       {sceneBootAllowed ? (
         <AthoraScene
-          modelState={modelState}
+          modelStateRef={modelStateRef}
+          scrollActivityRef={scrollActivityRef}
           hidden={hideSceneDuringIntroReveal}
           onCriticalAssetsReady={markCriticalSceneReady}
         />
