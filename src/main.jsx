@@ -1825,7 +1825,7 @@ function AthoraScene({ modelStateRef, scrollActivityRef, hidden = false, onCriti
     // softness). renderer.render() is ~92% of per-frame JS time and ~16/28 of that
     // scales with pixel count, so this roughly halves the fill-rate cost during scroll.
     const HIGH_RATIO = Math.min(window.devicePixelRatio, 1);
-    const LOW_RATIO = Math.max(HIGH_RATIO * 0.6, 0.5);
+    const LOW_RATIO = Math.max(HIGH_RATIO * 0.5, 0.45);
     let activeRatio = HIGH_RATIO;
     renderer.setPixelRatio(HIGH_RATIO);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -2551,12 +2551,11 @@ function AthoraScene({ modelStateRef, scrollActivityRef, hidden = false, onCriti
     const coolRim = new THREE.DirectionalLight(0x9ff7ff, 1.8);
     coolRim.position.set(-4.2, -0.6, 3.2);
     scene.add(coolRim);
-    const cyan = new THREE.PointLight(0x00ecff, 16, 9);
-    cyan.position.set(-3, -1.8, 2.8);
-    scene.add(cyan);
-    const blue = new THREE.PointLight(0x0427ff, 10, 8);
-    blue.position.set(2.6, -2.2, 3.2);
-    scene.add(blue);
+    // The two coloured PointLights were dropped: their subtle bottom glow is largely
+    // carried by the environment map, but they added real per-fragment cost (distance
+    // attenuation x full-screen) that hurt FPS during scroll transitions. The brand tint
+    // is folded into the cool rim instead.
+    coolRim.color.setHex(0x6fdcff);
 
     const resize = () => {
       const width = mount.clientWidth;
