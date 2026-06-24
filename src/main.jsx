@@ -460,11 +460,13 @@ const sections = [
   },
 ];
 
-const INTRO_REVEAL_PREP_MS = 420;
-const INTRO_REVEAL_DURATION_MS = 1050;
+// Preloader is much shorter now: there's no 3D/GLB to mask-load behind it, so it's just
+// a quick branded intro instead of a ~6s wait (the site was "opening very slowly").
+const INTRO_REVEAL_PREP_MS = 250;
+const INTRO_REVEAL_DURATION_MS = 650;
 const INTRO_SCENE_REVEAL_DELAY_MS = 120;
-const PRELOADER_DURATION_MS = 3000;
-const PRELOADER_COMPLETE_HOLD_MS = 1500;
+const PRELOADER_DURATION_MS = 1600;
+const PRELOADER_COMPLETE_HOLD_MS = 450;
 const PRELOADER_ASSET_WAIT_PROGRESS = 0.985;
 const PRELOADER_ASSET_FINISH_MS = 360;
 const PRELOADER_FORCE_COMPLETE_MS = 12000;
@@ -481,7 +483,8 @@ const CRITICAL_PRELOAD_IMAGE_SOURCES = [
   '/figma-hero/background-main.png',
   '/figma-hero/berry-right.png',
   '/figma-hero/image-3.svg',
-  '/figma-hero/berry-center.svg',
+  // berry-center.svg (6.1MB!) removed from the critical wait — it was blocking the
+  // preloader and making the site open very slowly. It loads lazily with the intro.
 ];
 // 3D/GLB removed in the frames-version branch — the can is shown via pre-rendered
 // transparent frame sequences scrubbed by scroll, so no GLB is preloaded.
@@ -4081,25 +4084,40 @@ const FRAME_SCRUB = {
   offsetY: 0,
 };
 
-function FlavorFrameScrub({ active }) {
+function FlavorFrameScrub({ active, start }) {
   const config = FRAME_SCRUB;
   const canvasRef = useRef(null);
   const framesRef = useRef([]);
 
   useEffect(() => {
-    const imgs = [];
-    for (let i = 1; i <= config.count; i += 1) {
-      const img = new Image();
-      img.decoding = 'async';
-      img.src = `${config.path}/${String(i).padStart(4, '0')}.webp`;
-      imgs.push(img);
-    }
+    // Don't fetch frames until the preloader is done. Loading ~10MB of frames during the
+    // initial load floods the network/main thread and stalls the preloader (it was taking
+    // ~19s to open). After the preloader, load them in order with a small concurrency cap
+    // so the intro frames arrive first and nothing gets flooded.
+    if (!start) return undefined;
+    let cancelled = false;
+    const imgs = new Array(config.count);
     framesRef.current = imgs;
-    // Pre-decode a generous opening run so the first stretch of scrub is hitch-free,
-    // then keep a decoded window around the playhead while scrolling (in the draw loop).
-    Promise.allSettled(imgs.slice(0, 60).map((im) => im.decode?.())).catch(() => {});
-    return () => { framesRef.current = []; };
-  }, [config]);
+    let next = 0;
+    let inFlight = 0;
+    const MAX_IN_FLIGHT = 8;
+    const pump = () => {
+      while (!cancelled && inFlight < MAX_IN_FLIGHT && next < config.count) {
+        const i = next;
+        next += 1;
+        const img = new Image();
+        img.decoding = 'async';
+        inFlight += 1;
+        const done = () => { inFlight -= 1; if (!cancelled) pump(); };
+        img.onload = () => { if (i < 60) img.decode?.().catch(() => {}); done(); };
+        img.onerror = done;
+        img.src = `${config.path}/${String(i + 1).padStart(4, '0')}.webp`;
+        imgs[i] = img;
+      }
+    };
+    pump();
+    return () => { cancelled = true; framesRef.current = []; };
+  }, [config, start]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -4369,7 +4387,10 @@ function LandingApp() {
       />
       <FixedDetailMorphBackground visible={showDetailMorphBg} />
       {/* 3D scene removed — cans are pre-rendered frame sequences scrubbed by scroll. */}
-      <FlavorFrameScrub active={activeSection?.id === 'intro' || activeSection?.id === 'all-systems'} />
+      <FlavorFrameScrub
+        active={activeSection?.id === 'intro' || activeSection?.id === 'all-systems'}
+        start={preloaderLocked}
+      />
       <Navigation activeIndex={activeIndex} showNav={showNav} preloaderLocked={preloaderLocked} />
       <FixedScrollDown visible={preloaderLocked && introRevealPhase === 'done' && activeSection?.id !== 'access'} />
       <PreloaderTransitionOverlay phase={introRevealPhase} />
