@@ -4089,8 +4089,9 @@ function FlavorFrameScrub({ active }) {
       imgs.push(img);
     }
     framesRef.current = imgs;
-    // Pre-decode the opening frames so the very first scrub is hitch-free.
-    Promise.allSettled(imgs.slice(0, 32).map((im) => im.decode?.())).catch(() => {});
+    // Pre-decode a generous opening run so the first stretch of scrub is hitch-free,
+    // then keep a decoded window around the playhead while scrolling (in the draw loop).
+    Promise.allSettled(imgs.slice(0, 60).map((im) => im.decode?.())).catch(() => {});
     return () => { framesRef.current = []; };
   }, [config]);
 
@@ -4133,12 +4134,13 @@ function FlavorFrameScrub({ active }) {
       const dir = idx >= lastIdx ? 1 : -1;
       lastIdx = idx;
       const img = framesRef.current[idx];
-      // Warm-decode the next frames in the scroll direction so upcoming frames are ready
-      // to draw instantly (no mid-scroll decode hitch).
-      for (let k = 1; k <= 10; k += 1) {
+      // Keep a decoded window around the playhead (mostly ahead in the scroll direction)
+      // so upcoming frames are ready to draw instantly — this is what removes the
+      // mid-scroll decode micro-freezes. Already-decoded frames resolve instantly.
+      for (let k = -8; k <= 30; k += 1) {
         const j = idx + dir * k;
-        const ahead = framesRef.current[j];
-        if (ahead && ahead.complete && ahead.naturalWidth) ahead.decode?.().catch(() => {});
+        const near = framesRef.current[j];
+        if (near && near.complete && near.naturalWidth) near.decode?.().catch(() => {});
       }
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (img && img.complete && img.naturalWidth) {
